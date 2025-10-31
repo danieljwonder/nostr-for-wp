@@ -44,26 +44,27 @@ class Nostr_Client {
     }
     
     /**
-     * Get user's configured relays
+     * Get site's configured relays (single site identity)
      */
     public function get_user_relays($user_id = null) {
-        if (!$user_id) {
-            $user_id = get_current_user_id();
+        $options = get_option('nostr_for_wp_options', array());
+        
+        // Check for site-level relays
+        if (isset($options['relays']) && is_array($options['relays']) && !empty($options['relays'])) {
+            return $options['relays'];
         }
         
-        $relays = get_user_meta($user_id, 'nostr_relays', true);
-        
-        if (empty($relays)) {
-            // Get default relays from options
-            $options = get_option('nostr_for_wp_options', array());
-            $relays = isset($options['default_relays']) ? $options['default_relays'] : array(
-                'wss://relay.damus.io',
-                'wss://relay.snort.social',
-                'wss://nos.lol'
-            );
+        // Fall back to default relays
+        if (isset($options['default_relays']) && is_array($options['default_relays'])) {
+            return $options['default_relays'];
         }
         
-        return is_array($relays) ? $relays : array();
+        // Return hardcoded defaults
+        return array(
+            'wss://relay.damus.io',
+            'wss://relay.snort.social',
+            'wss://nos.lol'
+        );
     }
     
     /**
@@ -74,12 +75,12 @@ class Nostr_Client {
     }
     
     /**
-     * Get user's public key
+     * Get site's public key (single site identity)
      */
     public function get_public_key() {
         if (!$this->public_key) {
-            $user_id = get_current_user_id();
-            $this->public_key = get_user_meta($user_id, 'nostr_public_key', true);
+            $options = get_option('nostr_for_wp_options', array());
+            $this->public_key = isset($options['public_key']) ? $options['public_key'] : null;
         }
         return $this->public_key;
     }
@@ -208,14 +209,11 @@ class Nostr_Client {
     }
     
     /**
-     * Subscribe to events from relays
+     * Subscribe to events from relays (single site identity)
      */
     public function subscribe_to_events($filters = array(), $user_id = null) {
-        if (!$user_id) {
-            $user_id = get_current_user_id();
-        }
-        
-        $relays = $this->get_user_relays($user_id);
+        // Get site's relays (user_id parameter kept for backward compatibility but not used)
+        $relays = $this->get_user_relays();
         $events = array();
         
         foreach ($relays as $relay_url) {

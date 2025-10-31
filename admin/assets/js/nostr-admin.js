@@ -473,26 +473,56 @@
             });
         });
         
-        // Force sync
+        // Force sync (inbound only - from last sync timestamp)
         $('#nostr-force-sync').on('click', function() {
             var button = $(this);
-            button.prop('disabled', true).text(nostrForWPAdmin.strings.syncing);
+            button.prop('disabled', true).text('Syncing...');
             
-            nostrForWP.forceSync().done(function(response) {
+            $.post(ajaxurl, {
+                action: 'nostr_force_sync',
+                nonce: nostrForWPAdmin.nonce
+            }).done(function(response) {
                 if (response.success) {
-                    showMessage(nostrForWPAdmin.strings.syncSuccess, 'success');
+                    showMessage(response.data || 'Sync completed', 'success');
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
                 } else {
-                    showMessage(nostrForWPAdmin.strings.syncError, 'error');
+                    showMessage(response.data || 'Sync failed', 'error');
                 }
-            }).fail(function(error) {
-                console.error('Force sync failed:', error);
-                if (error === 'NIP-07 extension not available') {
-                    showMessage('NIP-07 extension is required for sync. Please install a Nostr browser extension.', 'error');
-                } else {
-                    showMessage('Sync failed: ' + error, 'error');
-                }
+            }).fail(function() {
+                showMessage('Sync request failed', 'error');
             }).always(function() {
-                button.prop('disabled', false).text(nostrForWPAdmin.strings.forceSync);
+                button.prop('disabled', false).text('Force Sync Now');
+            });
+        });
+        
+        // Force full resync (inbound only - all events)
+        $('#nostr-force-full-resync').on('click', function() {
+            if (!confirm('Are you sure you want to do a full resync? This will re-process all events from Nostr, which may take a while.')) {
+                return;
+            }
+            
+            var button = $(this);
+            button.prop('disabled', true).text('Full Resyncing...');
+            
+            $.post(ajaxurl, {
+                action: 'nostr_force_sync',
+                full_resync: 'true',
+                nonce: nostrForWPAdmin.nonce
+            }).done(function(response) {
+                if (response.success) {
+                    showMessage(response.data || 'Full resync completed', 'success');
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showMessage(response.data || 'Full resync failed', 'error');
+                }
+            }).fail(function() {
+                showMessage('Full resync request failed', 'error');
+            }).always(function() {
+                button.prop('disabled', false).text('Force Full Resync');
             });
         });
         

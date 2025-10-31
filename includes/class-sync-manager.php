@@ -81,37 +81,52 @@ class Nostr_Sync_Manager {
     /**
      * Sync from Nostr to WordPress
      */
-    public function sync_from_nostr($user_id = null) {
+    public function sync_from_nostr($user_id = null, $force_full_resync = false) {
+        // Default to user 1 for post authoring if no user_id provided
         if (!$user_id) {
-            $user_id = get_current_user_id();
+            $user_id = 1;
         }
         
         $nostr_client = Nostr_Client::get_instance();
         
-        // Get user's public key to filter events
+        // Get site's public key to filter events (single site identity)
         $public_key = $nostr_client->get_public_key();
         if (!$public_key) {
-            error_log('Nostr: No public key found for user ' . $user_id);
+            error_log('Nostr: No public key found for site');
             return false;
         }
         
-        // Get last sync timestamp to avoid re-processing old events
-        // For development/testing, use a wider window (last 7 days)
-        $last_sync = get_user_meta($user_id, '_nostr_last_sync', true);
-        
-        // Go back to January 1, 2025 to get all posts
-        $since_timestamp = strtotime('2025-01-01 00:00:00 UTC');
+        // Determine sync timestamp
+        $since_timestamp = null;
+        if (!$force_full_resync) {
+            // Get last sync timestamp from site options
+            $last_sync_option = get_option('nostr_last_sync_timestamp');
+            
+            // If no last sync, this is the first run - sync all events
+            if ($last_sync_option) {
+                $since_timestamp = intval($last_sync_option);
+            }
+            // If $since_timestamp is still null, don't add 'since' filter (get all events)
+        }
+        // If $force_full_resync is true, $since_timestamp stays null (get all events)
         
         try {
-            // Query for kind 1 events (notes) from this author
+            // Query for kind 1 events (notes) and kind 30023 (long-form) from this author
             $filters = array(
-                'kinds' => array(1, 30023), // Both kind 1 (notes) and kind 30023 (long-form)
+                'kinds' => array(1, 30023),
                 'authors' => array($public_key),
-                'since' => $since_timestamp,
-                'limit' => 500 // Increased limit for more posts
+                'limit' => 500
             );
             
-            error_log('Nostr: Syncing from Nostr for user ' . $user_id . ' since ' . date('Y-m-d H:i:s', $since_timestamp));
+            // Only add 'since' filter if we have a timestamp and not doing a full resync
+            if ($since_timestamp !== null) {
+                $filters['since'] = $since_timestamp;
+                nostr_for_wp_debug_log('Syncing from timestamp: ' . date('Y-m-d H:i:s', $since_timestamp));
+            } else {
+                nostr_for_wp_debug_log('Full sync - fetching all events');
+            }
+            
+            error_log('Nostr: Syncing from Nostr for site (author: user ' . $user_id . ')' . ($since_timestamp ? ' since ' . date('Y-m-d H:i:s', $since_timestamp) : ' (full sync)'));
             error_log('Nostr: Query filters: ' . json_encode($filters));
             
             $events = $nostr_client->subscribe_to_events($filters, $user_id);
@@ -157,8 +172,22 @@ class Nostr_Sync_Manager {
                 }
             }
             
-            // Update last sync timestamp
-            update_user_meta($user_id, '_nostr_last_sync', time());
+            // Update last sync timestamp (use current time, or oldest event time if doing full resync)
+            if ($force_full_resync && !empty($unique_events)) {
+                // Find the oldest event timestamp
+                $oldest_timestamp = PHP_INT_MAX;
+                foreach ($unique_events as $event) {
+                    if (isset($event['created_at']) && $event['created_at'] < $oldest_timestamp) {
+                        $oldest_timestamp = $event['created_at'];
+                    }
+                }
+                // Store timestamp 1 second before oldest to ensure we don't miss anything
+                $last_sync_timestamp = $oldest_timestamp > 0 ? ($oldest_timestamp - 1) : time();
+            } else {
+                $last_sync_timestamp = time();
+            }
+            
+            update_option('nostr_last_sync_timestamp', $last_sync_timestamp);
             
             error_log('Nostr: Processed ' . $processed_count . ' events, skipped ' . $skipped_count . ' events');
             
@@ -178,6 +207,9 @@ class Nostr_Sync_Manager {
      * Process a single Nostr event
      */
     private function process_nostr_event($event, $user_id = null) {
+        $log_file = WP_CONTENT_DIR . '/nostr-debug.log';
+        $event_id = $event['id'] ?? 'unknown';
+        
         try {
             if (!$user_id) {
                 $user_id = get_current_user_id();
@@ -187,12 +219,18 @@ class Nostr_Sync_Manager {
             
             // Validate event structure
             if (!isset($event['id']) || !isset($event['kind']) || !isset($event['content'])) {
-                error_log('Nostr: Invalid event structure for event ' . ($event['id'] ?? 'unknown'));
+                // Always log errors
+                $msg = date('Y-m-d H:i:s') . " - Event {$event_id}: INVALID - Missing required fields (id/kind/content)\n";
+                file_put_contents($log_file, $msg, FILE_APPEND | LOCK_EX);
+                error_log('Nostr: Invalid event structure for event ' . $event_id);
                 return false;
             }
             
+            nostr_for_wp_debug_log("Processing event {$event_id} (kind: {$event['kind']}, created: " . date('Y-m-d H:i:s', $event['created_at']) . ")");
+            
             // Only process kind 1 (notes) and kind 30023 (long-form) events
             if ($event['kind'] !== 1 && $event['kind'] !== 30023) {
+                nostr_for_wp_debug_log("Event {$event_id}: SKIPPED - Wrong kind ({$event['kind']}, expected 1 or 30023)");
                 return 'skipped'; // Skip other event types
             }
             
@@ -200,7 +238,8 @@ class Nostr_Sync_Manager {
             if (isset($event['tags']) && is_array($event['tags'])) {
                 foreach ($event['tags'] as $tag) {
                     if (is_array($tag) && $tag[0] === 'e') {
-                        error_log('Nostr: Skipping reply event: ' . $event['id'] . ' - ' . substr($event['content'], 0, 30));
+                        nostr_for_wp_debug_log("Event {$event_id}: SKIPPED - Is a reply (has 'e' tag)");
+                        error_log('Nostr: Skipping reply event: ' . $event_id . ' - ' . substr($event['content'], 0, 30));
                         return 'skipped'; // This is a reply, skip it
                     }
                 }
@@ -214,16 +253,22 @@ class Nostr_Sync_Manager {
                 $nostr_modified = intval($event['created_at']);
                 $wp_modified = strtotime($existing_post->post_modified);
                 
+                nostr_for_wp_debug_log("Event {$event_id}: Already exists (WP post ID: {$existing_post->ID})");
+                
                 if ($nostr_modified <= $wp_modified) {
-                    error_log('Nostr: Skipping event ' . $event['id'] . ' - WordPress version is newer');
+                    nostr_for_wp_debug_log("Event {$event_id}: SKIPPED - WP version newer (Nostr: " . date('Y-m-d H:i:s', $nostr_modified) . " vs WP: {$existing_post->post_modified})");
+                    error_log('Nostr: Skipping event ' . $event_id . ' - WordPress version is newer');
                     return 'skipped'; // WordPress version is newer
                 }
                 
                 // Update existing post
                 $this->update_post_from_nostr_event($existing_post->ID, $event, $user_id);
-                error_log('Nostr: Updated existing post ' . $existing_post->ID . ' from Nostr event ' . $event['id']);
+                nostr_for_wp_debug_log("Event {$event_id}: UPDATED existing post {$existing_post->ID}");
+                error_log('Nostr: Updated existing post ' . $existing_post->ID . ' from Nostr event ' . $event_id);
                 return true;
             } else {
+                nostr_for_wp_debug_log("Event {$event_id}: Creating new " . ($event['kind'] === 1 ? 'note' : 'post'));
+                
                 // Create new post based on event kind
                 $post_id = null;
                 if ($event['kind'] === 1) {
@@ -233,16 +278,29 @@ class Nostr_Sync_Manager {
                 }
                 
                 if ($post_id) {
-                    error_log('Nostr: Created new ' . ($event['kind'] === 1 ? 'note' : 'post') . ' ' . $post_id . ' from Nostr event ' . $event['id']);
+                    nostr_for_wp_debug_log("Event {$event_id}: CREATED new " . ($event['kind'] === 1 ? 'note' : 'post') . " (WP ID: {$post_id})");
+                    error_log('Nostr: Created new ' . ($event['kind'] === 1 ? 'note' : 'post') . ' ' . $post_id . ' from Nostr event ' . $event_id);
                     return true;
                 } else {
-                    error_log('Nostr: Failed to create post from event ' . $event['id']);
+                    // Always log failures
+                    $msg = date('Y-m-d H:i:s') . " - Event {$event_id}: FAILED to create post (nostr_event_to_" . ($event['kind'] === 1 ? 'note' : 'post') . " returned false/null)\n";
+                    file_put_contents($log_file, $msg, FILE_APPEND | LOCK_EX);
+                    error_log('Nostr: Failed to create post from event ' . $event_id);
                     return false;
                 }
             }
             
         } catch (Exception $e) {
-            error_log('Nostr: Error processing event ' . ($event['id'] ?? 'unknown') . ': ' . $e->getMessage());
+            // Always log errors
+            $msg = date('Y-m-d H:i:s') . " - Event {$event_id}: EXCEPTION - " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n";
+            file_put_contents($log_file, $msg, FILE_APPEND | LOCK_EX);
+            error_log('Nostr: Error processing event ' . $event_id . ': ' . $e->getMessage());
+            return false;
+        } catch (Error $e) {
+            // Always log fatal errors
+            $msg = date('Y-m-d H:i:s') . " - Event {$event_id}: FATAL ERROR - " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n";
+            file_put_contents($log_file, $msg, FILE_APPEND | LOCK_EX);
+            error_log('Nostr: Fatal error processing event ' . $event_id . ': ' . $e->getMessage());
             return false;
         }
     }

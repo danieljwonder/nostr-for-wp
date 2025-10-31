@@ -101,106 +101,78 @@ class Nostr_NIP07_Handler {
     }
     
     /**
-     * Save user's public key
+     * Save site's public key (single site identity)
      */
     public function save_public_key($public_key, $user_id = null) {
-        if (!$user_id) {
-            $user_id = get_current_user_id();
-        }
-        
-        if (!$user_id) {
-            return false;
-        }
-        
         // Validate public key format (should be 64 character hex string)
         if (!preg_match('/^[a-f0-9]{64}$/i', $public_key)) {
             return false;
         }
         
-        update_user_meta($user_id, 'nostr_public_key', $public_key);
+        // Save to site options (single site identity)
+        $options = get_option('nostr_for_wp_options', array());
+        $options['public_key'] = $public_key;
+        update_option('nostr_for_wp_options', $options);
         
         return true;
     }
     
     /**
-     * Get user's public key
+     * Get site's public key (single site identity)
      */
     public function get_public_key($user_id = null) {
-        if (!$user_id) {
-            $user_id = get_current_user_id();
-        }
-        
-        if (!$user_id) {
-            return null;
-        }
-        
-        return get_user_meta($user_id, 'nostr_public_key', true);
+        $options = get_option('nostr_for_wp_options', array());
+        return isset($options['public_key']) ? $options['public_key'] : null;
     }
     
     /**
-     * Check if user has connected their Nostr key
+     * Check if site has connected Nostr key (single site identity)
      */
     public function is_user_connected($user_id = null) {
-        $public_key = $this->get_public_key($user_id);
+        $public_key = $this->get_public_key();
         return !empty($public_key);
     }
     
     /**
-     * Disconnect user's Nostr key
+     * Disconnect site's Nostr key (single site identity)
      */
     public function disconnect_user($user_id = null) {
-        if (!$user_id) {
-            $user_id = get_current_user_id();
-        }
-        
-        if (!$user_id) {
-            return false;
-        }
-        
-        delete_user_meta($user_id, 'nostr_public_key');
+        // Remove from site options
+        $options = get_option('nostr_for_wp_options', array());
+        unset($options['public_key']);
+        update_option('nostr_for_wp_options', $options);
         
         return true;
     }
     
     /**
-     * Get user's relay configuration
+     * Get site's relay configuration (single site identity)
      */
     public function get_user_relays($user_id = null) {
-        if (!$user_id) {
-            $user_id = get_current_user_id();
+        $options = get_option('nostr_for_wp_options', array());
+        
+        // Check for site-level relays
+        if (isset($options['relays']) && is_array($options['relays']) && !empty($options['relays'])) {
+            return $options['relays'];
         }
         
-        if (!$user_id) {
-            return array();
+        // Fall back to default relays
+        if (isset($options['default_relays']) && is_array($options['default_relays'])) {
+            return $options['default_relays'];
         }
         
-        $relays = get_user_meta($user_id, 'nostr_relays', true);
-        
-        if (empty($relays) || !is_array($relays)) {
-            // Return default relays
-            $options = get_option('nostr_for_wp_options', array());
-            return isset($options['default_relays']) ? $options['default_relays'] : array(
-                'wss://relay.damus.io',
-                'wss://relay.snort.social',
-                'wss://nos.lol'
-            );
-        }
-        
-        return $relays;
+        // Return hardcoded defaults
+        return array(
+            'wss://relay.damus.io',
+            'wss://relay.snort.social',
+            'wss://nos.lol'
+        );
     }
     
     /**
-     * Save user's relay configuration
+     * Save site's relay configuration (single site identity)
      */
     public function save_user_relays($relays, $user_id = null) {
-        if (!$user_id) {
-            $user_id = get_current_user_id();
-        }
-        
-        if (!$user_id) {
-            return false;
-        }
-        
         // Validate relay URLs
         $valid_relays = array();
         foreach ($relays as $relay) {
@@ -210,7 +182,10 @@ class Nostr_NIP07_Handler {
             }
         }
         
-        update_user_meta($user_id, 'nostr_relays', $valid_relays);
+        // Save to site options
+        $options = get_option('nostr_for_wp_options', array());
+        $options['relays'] = $valid_relays;
+        update_option('nostr_for_wp_options', $options);
         
         return true;
     }
@@ -224,13 +199,9 @@ class Nostr_NIP07_Handler {
     }
     
     /**
-     * Get connection status for user
+     * Get connection status for site (single site identity)
      */
     public function get_connection_status($user_id = null, $test_relays = false) {
-        if (!$user_id) {
-            $user_id = get_current_user_id();
-        }
-        
         $status = array(
             'connected' => false,
             'public_key' => null,
@@ -238,13 +209,13 @@ class Nostr_NIP07_Handler {
             'relay_status' => array()
         );
         
-        $public_key = $this->get_public_key($user_id);
+        $public_key = $this->get_public_key();
         if ($public_key) {
             $status['connected'] = true;
             $status['public_key'] = $public_key;
         }
         
-        $relays = $this->get_user_relays($user_id);
+        $relays = $this->get_user_relays();
         $status['relays'] = $relays;
         
         // Only test relay connections if explicitly requested

@@ -132,7 +132,15 @@ class Nostr_Content_Mapper {
      * Convert Nostr event to WordPress note (kind 1)
      */
     public function nostr_event_to_note($event, $user_id = null) {
+        $log_file = WP_CONTENT_DIR . '/nostr-debug.log';
+        $event_id = $event['id'] ?? 'unknown';
+        
+        nostr_for_wp_debug_log("nostr_event_to_note() called for event {$event_id}");
+        
         if ($event['kind'] !== 1) {
+            // Always log errors
+            $msg = date('Y-m-d H:i:s') . " - Event {$event_id}: nostr_event_to_note() FAILED - Wrong kind ({$event['kind']}, expected 1)\n";
+            file_put_contents($log_file, $msg, FILE_APPEND | LOCK_EX);
             return false;
         }
         
@@ -140,9 +148,39 @@ class Nostr_Content_Mapper {
             $user_id = get_current_user_id();
         }
         
+        nostr_for_wp_debug_log("Event {$event_id}: Using user_id: {$user_id}");
+        
         // Extract title from content (first line or first 50 chars)
         $content = $this->markdown_to_html($event['content']);
         $title = $this->extract_title_from_content($event['content']);
+        
+        nostr_for_wp_debug_log("Event {$event_id}: Extracted title: " . substr($title, 0, 50) . "...");
+        
+        // Validate required fields
+        if (empty($title)) {
+            // Always log failures
+            $msg = date('Y-m-d H:i:s') . " - Event {$event_id}: FAILED - Empty title extracted\n";
+            file_put_contents($log_file, $msg, FILE_APPEND | LOCK_EX);
+            return false;
+        }
+        
+        if (empty($content)) {
+            // Always log failures
+            $msg = date('Y-m-d H:i:s') . " - Event {$event_id}: FAILED - Empty content after markdown conversion\n";
+            file_put_contents($log_file, $msg, FILE_APPEND | LOCK_EX);
+            return false;
+        }
+        
+        // Final sanitization of title to ensure database compatibility
+        $title = sanitize_text_field($title);
+        // Remove any remaining invalid UTF-8 sequences
+        if (function_exists('mb_convert_encoding')) {
+            $title = mb_convert_encoding($title, 'UTF-8', 'UTF-8');
+        }
+        // Ensure title isn't empty
+        if (empty($title)) {
+            $title = 'Note';
+        }
         
         $post_data = array(
             'post_title' => $title,
@@ -154,9 +192,45 @@ class Nostr_Content_Mapper {
             'post_date_gmt' => gmdate('Y-m-d H:i:s', $event['created_at'])
         );
         
-        $post_id = wp_insert_post($post_data);
+        nostr_for_wp_debug_log("Event {$event_id}: Post data - title length: " . strlen($title) . ", content length: " . strlen($content) . ", author: {$user_id}");
+        nostr_for_wp_debug_log("Event {$event_id}: Calling wp_insert_post() with post_type='note'");
+        
+        // Check if 'note' post type exists
+        if (!post_type_exists('note')) {
+            // Always log errors
+            $msg = date('Y-m-d H:i:s') . " - Event {$event_id}: FAILED - 'note' post type does not exist!\n";
+            file_put_contents($log_file, $msg, FILE_APPEND | LOCK_EX);
+            return false;
+        }
+        
+        // Check if user can create posts of this type
+        $post_type_obj = get_post_type_object('note');
+        if ($post_type_obj && isset($post_type_obj->cap)) {
+            $capabilities = is_object($post_type_obj->cap) ? get_object_vars($post_type_obj->cap) : (array) $post_type_obj->cap;
+            nostr_for_wp_debug_log("Event {$event_id}: Post type 'note' exists, capabilities: " . implode(', ', array_keys($capabilities)));
+        }
+        
+        $post_id = wp_insert_post($post_data, true); // Set second param to true to get WP_Error if any
+        
+        // Check for PHP errors (always log these)
+        $last_error = error_get_last();
+        if ($last_error && in_array($last_error['type'], [E_ERROR, E_WARNING, E_PARSE, E_NOTICE, E_CORE_ERROR, E_CORE_WARNING, E_COMPILE_ERROR, E_COMPILE_WARNING])) {
+            $msg = date('Y-m-d H:i:s') . " - Event {$event_id}: PHP Error detected: " . $last_error['message'] . " in " . $last_error['file'] . ":" . $last_error['line'] . "\n";
+            file_put_contents($log_file, $msg, FILE_APPEND | LOCK_EX);
+        }
+        
+        nostr_for_wp_debug_log("Event {$event_id}: wp_insert_post() returned: " . var_export($post_id, true));
+        
+        if (is_wp_error($post_id)) {
+            // Always log errors
+            $msg = date('Y-m-d H:i:s') . " - Event {$event_id}: wp_insert_post() returned WP_Error: " . $post_id->get_error_message() . " (" . $post_id->get_error_code() . ")\n";
+            file_put_contents($log_file, $msg, FILE_APPEND | LOCK_EX);
+            return false;
+        }
         
         if ($post_id && !is_wp_error($post_id)) {
+            nostr_for_wp_debug_log("Event {$event_id}: Post created successfully (ID: {$post_id}), setting metadata...");
+            
             // Set sync metadata
             update_post_meta($post_id, '_nostr_sync_enabled', 1);
             update_post_meta($post_id, '_nostr_event_id', $event['id']);
@@ -168,8 +242,14 @@ class Nostr_Content_Mapper {
             // Add tags from Nostr event
             $this->add_tags_to_note($post_id, $event['tags']);
             
+            nostr_for_wp_debug_log("Event {$event_id}: nostr_event_to_note() SUCCESS - Post ID: {$post_id}");
+            
             return $post_id;
         }
+        
+        // Always log failures
+        $msg = date('Y-m-d H:i:s') . " - Event {$event_id}: nostr_event_to_note() FAILED - wp_insert_post returned false/0 and no WP_Error\n";
+        file_put_contents($log_file, $msg, FILE_APPEND | LOCK_EX);
         
         return false;
     }
@@ -265,8 +345,30 @@ class Nostr_Content_Mapper {
         $lines = explode("\n", $content);
         $first_line = trim($lines[0]);
         
-        if (strlen($first_line) > 50) {
-            return substr($first_line, 0, 47) . '...';
+        // Handle UTF-8 properly with mb_string functions
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            if (mb_strlen($first_line, 'UTF-8') > 50) {
+                $first_line = mb_substr($first_line, 0, 47, 'UTF-8') . '...';
+            }
+        } else {
+            // Fallback for systems without mb_string
+            if (strlen($first_line) > 50) {
+                $first_line = substr($first_line, 0, 47) . '...';
+            }
+        }
+        
+        // Sanitize to ensure valid UTF-8 and remove invalid characters
+        $first_line = sanitize_text_field($first_line);
+        
+        // Ensure we have a valid title (max 200 chars for WordPress)
+        if (function_exists('mb_strlen')) {
+            if (mb_strlen($first_line, 'UTF-8') > 200) {
+                $first_line = mb_substr($first_line, 0, 197, 'UTF-8') . '...';
+            }
+        } else {
+            if (strlen($first_line) > 200) {
+                $first_line = substr($first_line, 0, 197) . '...';
+            }
         }
         
         return $first_line ?: 'Note';

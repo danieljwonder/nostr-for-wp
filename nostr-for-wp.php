@@ -3,7 +3,7 @@
  * Plugin Name: Nostr for WordPress
  * Plugin URI: https://github.com/danieljwonder/nostr-for-wp
  * Description: Two-way synchronization between WordPress content and Nostr protocol. Supports kind 1 notes and kind 30023 long-form content with NIP-07 browser extension signing.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Daniel Wonder
  * License: GPL v2 or later
  * Text Domain: nostr-for-wp
@@ -21,6 +21,26 @@ define('NOSTR_FOR_WP_PLUGIN_FILE', __FILE__);
 define('NOSTR_FOR_WP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('NOSTR_FOR_WP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('NOSTR_FOR_WP_PLUGIN_BASENAME', plugin_basename(__FILE__));
+
+// Toggle verbose debug logging (set to true to enable detailed logging, false to disable)
+if (!defined('NOSTR_FOR_WP_VERBOSE_DEBUG')) {
+    define('NOSTR_FOR_WP_VERBOSE_DEBUG', false);
+}
+
+/**
+ * Helper function to log debug messages (only if verbose debugging is enabled)
+ * 
+ * @param string $message The message to log
+ */
+function nostr_for_wp_debug_log($message) {
+    if (!NOSTR_FOR_WP_VERBOSE_DEBUG) {
+        return;
+    }
+    
+    $log_file = WP_CONTENT_DIR . '/nostr-debug.log';
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($log_file, "{$timestamp} - {$message}\n", FILE_APPEND | LOCK_EX);
+}
 
 /**
  * Main plugin class
@@ -60,7 +80,6 @@ class Nostr_For_WP {
         add_action('init', array($this, 'init'));
         add_action('admin_init', array($this, 'admin_init'));
         add_action('admin_menu', array($this, 'admin_menu'));
-        add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
         add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
     }
     
@@ -124,24 +143,6 @@ class Nostr_For_WP {
             'nostr-for-wp',
             array('Nostr_Admin_Settings', 'render_settings_page')
         );
-    }
-    
-    /**
-     * Enqueue frontend scripts
-     */
-    public function enqueue_scripts() {
-        wp_enqueue_script(
-            'nostr-for-wp-frontend',
-            NOSTR_FOR_WP_PLUGIN_URL . 'assets/js/nostr-frontend.js',
-            array('jquery'),
-            NOSTR_FOR_WP_VERSION,
-            true
-        );
-        
-        wp_localize_script('nostr-for-wp-frontend', 'nostrForWP', array(
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('nostr_for_wp_nonce')
-        ));
     }
     
     /**
@@ -288,14 +289,12 @@ class Nostr_For_WP {
      * Plugin activation
      */
     public function activate() {
+        // Load cron handler directly since dependencies might not be loaded yet
+        require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-cron-handler.php';
+        
         // Flush rewrite rules
         $this->register_post_types();
         flush_rewrite_rules();
-        
-        // Schedule cron job
-        if (!wp_next_scheduled('nostr_poll_updates')) {
-            wp_schedule_event(time(), 'nostr_poll_interval', 'nostr_poll_updates');
-        }
         
         // Set default options
         $default_options = array(
@@ -309,14 +308,22 @@ class Nostr_For_WP {
         );
         
         add_option('nostr_for_wp_options', $default_options);
+        
+        // Schedule cron job using the cron handler (which will check auto_sync_enabled)
+        $cron_handler = Nostr_Cron_Handler::get_instance();
+        $cron_handler->schedule_cron();
     }
     
     /**
      * Plugin deactivation
      */
     public function deactivate() {
-        // Clear scheduled cron job
-        wp_clear_scheduled_hook('nostr_poll_updates');
+        // Load cron handler directly since dependencies might not be loaded yet
+        require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-cron-handler.php';
+        
+        // Unschedule cron job using the cron handler
+        $cron_handler = Nostr_Cron_Handler::get_instance();
+        $cron_handler->unschedule_cron();
         
         // Flush rewrite rules
         flush_rewrite_rules();

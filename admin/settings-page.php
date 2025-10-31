@@ -62,6 +62,12 @@ class Nostr_Admin_Settings {
      * Sanitize options
      */
     public function sanitize_options($options) {
+        // Get existing options to preserve fields not in the form (like public_key, relays)
+        $existing_options = get_option('nostr_for_wp_options', array());
+        
+        // Merge new options with existing to preserve non-form fields
+        $options = array_merge($existing_options, $options);
+        
         if (isset($options['default_relays'])) {
             $options['default_relays'] = array_filter($options['default_relays'], function($relay) {
                 return filter_var($relay, FILTER_VALIDATE_URL) && 
@@ -72,6 +78,16 @@ class Nostr_Admin_Settings {
         if (isset($options['sync_interval'])) {
             $options['sync_interval'] = max(60, intval($options['sync_interval']));
         }
+        
+        // Explicitly handle unchecked checkbox - if not present, set to false
+        // But only if it was actually submitted (check $_POST directly)
+        if (isset($_POST['nostr_for_wp_options']['auto_sync_enabled'])) {
+            $options['auto_sync_enabled'] = (bool) $_POST['nostr_for_wp_options']['auto_sync_enabled'];
+        } elseif (!isset($options['auto_sync_enabled'])) {
+            // If not submitted and doesn't exist, default to true
+            $options['auto_sync_enabled'] = true;
+        }
+        // Otherwise keep existing value
         
         return $options;
     }
@@ -103,8 +119,8 @@ class Nostr_Admin_Settings {
                             <div class="nostr-status connected">
                                 <span class="dashicons dashicons-yes-alt"></span>
                                 <strong><?php _e('Connected', 'nostr-for-wp'); ?></strong>
-                                <p><?php printf(__('Your Public Key: %s', 'nostr-for-wp'), substr($connection_status['public_key'], 0, 16) . '...'); ?></p>
-                                <p class="description"><?php _e('This is your personal Nostr identity. Each user has their own key.', 'nostr-for-wp'); ?></p>
+                                <p><?php printf(__('Site Public Key: %s', 'nostr-for-wp'), substr($connection_status['public_key'], 0, 16) . '...'); ?></p>
+                                <p class="description"><?php _e('This is your site\'s Nostr identity. All content synced to and from Nostr uses this key.', 'nostr-for-wp'); ?></p>
                                 <button type="button" class="button" id="nostr-disconnect"><?php _e('Disconnect', 'nostr-for-wp'); ?></button>
                             </div>
                         <?php else: ?>
@@ -203,6 +219,7 @@ class Nostr_Admin_Settings {
                     
                     <p>
                         <button type="button" class="button" id="nostr-force-sync"><?php _e('Force Sync Now', 'nostr-for-wp'); ?></button>
+                        <button type="button" class="button button-secondary" id="nostr-force-full-resync"><?php _e('Force Full Resync', 'nostr-for-wp'); ?></button>
                         <button type="button" class="button" id="nostr-test-all-relays"><?php _e('Test All Relays', 'nostr-for-wp'); ?></button>
                     </p>
                     
@@ -389,17 +406,21 @@ class Nostr_Admin_Settings {
             wp_die('Insufficient permissions');
         }
         
-        // Only handle inbound sync (Nostr → WordPress)
-        // Outbound sync (WordPress → Nostr) is handled by browser with NIP-07 signing
-        $cron_handler = Nostr_Cron_Handler::get_instance();
-        $success = $cron_handler->poll_nostr_updates();
+        // Check if this is a full resync request
+        $force_full_resync = isset($_POST['full_resync']) && $_POST['full_resync'] === 'true';
         
-        error_log('Nostr: Background inbound sync completed');
+        $sync_manager = Nostr_Sync_Manager::get_instance();
+        $result = $sync_manager->sync_from_nostr(1, $force_full_resync);
         
-        if ($success) {
-            wp_send_json_success('Inbound sync completed');
+        error_log('Nostr: Force sync completed' . ($force_full_resync ? ' (full resync)' : ''));
+        
+        if ($result !== false) {
+            $message = $force_full_resync 
+                ? sprintf('Full resync completed: %d processed, %d skipped', $result['processed'], $result['skipped'])
+                : sprintf('Sync completed: %d processed, %d skipped', $result['processed'], $result['skipped']);
+            wp_send_json_success($message);
         } else {
-            wp_send_json_error('Inbound sync failed');
+            wp_send_json_error('Sync failed');
         }
     }
     
