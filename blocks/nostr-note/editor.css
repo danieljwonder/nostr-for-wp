@@ -1,0 +1,20 @@
+/* Editor styles for Nostr Note block */
+.nostr-note-block-placeholder {
+    padding: 1rem;
+    border: 1px dashed #ccc;
+    background: #f9f9f9;
+    text-align: center;
+}
+
+.nostr-note-block-placeholder p {
+    margin: 0.5rem 0;
+}
+
+.nostr-note-preview {
+    text-align: left;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #fff;
+    border: 1px solid #ddd;
+}
+

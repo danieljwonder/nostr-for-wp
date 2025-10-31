@@ -3,7 +3,7 @@
  * Plugin Name: Nostr for WordPress
  * Plugin URI: https://github.com/danieljwonder/nostr-for-wp
  * Description: Two-way synchronization between WordPress content and Nostr protocol. Supports kind 1 notes and kind 30023 long-form content with NIP-07 browser extension signing.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Daniel Wonder
  * License: GPL v2 or later
  * Text Domain: nostr-for-wp
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('NOSTR_FOR_WP_VERSION', '1.0.0');
+define('NOSTR_FOR_WP_VERSION', '1.2.0');
 define('NOSTR_FOR_WP_PLUGIN_FILE', __FILE__);
 define('NOSTR_FOR_WP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('NOSTR_FOR_WP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -94,6 +94,8 @@ class Nostr_For_WP {
         require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-content-mapper.php';
         require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-nip07-handler.php';
         require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-cron-handler.php';
+        require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-frontend-display.php';
+        require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-note-shortcode.php';
         
         // Load admin classes
         if (is_admin()) {
@@ -117,6 +119,11 @@ class Nostr_For_WP {
         Nostr_Sync_Manager::get_instance();
         Nostr_Content_Mapper::get_instance();
         Nostr_Cron_Handler::get_instance();
+        Nostr_Frontend_Display::get_instance();
+        Nostr_Note_Shortcode::get_instance();
+        
+        // Register blocks (must be early to appear in block inserter)
+        add_action('init', array($this, 'register_blocks'), 10);
         
         if (is_admin()) {
             Nostr_Admin_Settings::get_instance();
@@ -247,6 +254,65 @@ class Nostr_For_WP {
                 NOSTR_FOR_WP_VERSION
             );
         }
+    }
+    
+    /**
+     * Register Gutenberg blocks
+     */
+    public function register_blocks() {
+        // Only register if block editor is available
+        if (!function_exists('register_block_type')) {
+            return;
+        }
+        
+        // Register Nostr Notes block using block.json
+        $notes_block_path = NOSTR_FOR_WP_PLUGIN_DIR . 'blocks/nostr-notes/block.json';
+        if (file_exists($notes_block_path)) {
+            register_block_type($notes_block_path, array(
+                'render_callback' => array($this, 'render_nostr_notes_block'),
+            ));
+        }
+        
+        // Register single Nostr Note block using block.json
+        $note_block_path = NOSTR_FOR_WP_PLUGIN_DIR . 'blocks/nostr-note/block.json';
+        if (file_exists($note_block_path)) {
+            register_block_type($note_block_path, array(
+                'render_callback' => array($this, 'render_nostr_note_block'),
+            ));
+        }
+    }
+    
+    /**
+     * Render Nostr Notes block
+     */
+    public function render_nostr_notes_block($attributes) {
+        $attributes = wp_parse_args($attributes, array(
+            'limit' => 10,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ));
+        
+        return do_shortcode(sprintf(
+            '[nostr_notes limit="%d" orderby="%s" order="%s"]',
+            intval($attributes['limit']),
+            esc_attr($attributes['orderby']),
+            esc_attr($attributes['order'])
+        ));
+    }
+    
+    /**
+     * Render single Nostr Note block
+     */
+    public function render_nostr_note_block($attributes) {
+        $attributes = wp_parse_args($attributes, array(
+            'noteId' => 0,
+        ));
+        
+        if (!$attributes['noteId']) {
+            return '<p>' . esc_html__('Please select a note.', 'nostr-for-wp') . '</p>';
+        }
+        
+        return do_shortcode(sprintf('[nostr_note id="%d"]', intval($attributes['noteId'])));
     }
     
     /**
