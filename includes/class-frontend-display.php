@@ -40,11 +40,8 @@ class Nostr_Frontend_Display {
         // Add body class for notes
         add_filter('body_class', array($this, 'add_note_body_class'));
         
-        // Hide title for notes on single pages
-        add_filter('the_title', array($this, 'hide_note_title_single'), 10, 2);
-        
-        // Add inline styles to hide theme's meta row
-        add_action('wp_head', array($this, 'add_meta_hiding_styles'));
+        // Add custom class to note posts
+        add_filter('post_class', array($this, 'add_note_post_class'));
         
         // Enhance note content with wrapper and metadata
         add_filter('the_content', array($this, 'enhance_note_content'), 10);
@@ -52,8 +49,8 @@ class Nostr_Frontend_Display {
         // Enqueue frontend styles
         add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_styles'));
         
-        // Add custom class to note posts
-        add_filter('post_class', array($this, 'add_note_post_class'));
+        // Hide default entry header elements for notes (filter-based approach)
+        add_action('template_redirect', array($this, 'setup_note_template_filters'));
     }
     
     /**
@@ -73,51 +70,57 @@ class Nostr_Frontend_Display {
     }
     
     /**
-     * Hide title for notes on single pages
-     * 
-     * Note: CSS is the primary method for hiding titles, but this filter
-     * helps in cases where themes check for empty titles.
+     * Setup template filters for note display
+     * Uses WordPress filters instead of CSS to control output
      */
-    public function hide_note_title_single($title, $post_id = null) {
-        // Only modify on frontend single note pages
-        if (!is_admin() && is_singular('note')) {
-            global $post;
-            
-            // Use the global post if post_id is not provided
-            $current_post = $post_id ? get_post($post_id) : $post;
-            
-            // Only hide if this is a note post type and we're in the loop
-            if ($current_post && $current_post->post_type === 'note' && in_the_loop()) {
-                // Return single space to avoid layout issues, CSS will hide it
-                return ' ';
-            }
+    public function setup_note_template_filters() {
+        if (!is_singular('note')) {
+            return;
+        }
+        
+        // Remove theme's default entry header/title output
+        // This is theme-agnostic and works with most themes
+        add_filter('the_title', array($this, 'filter_note_title'), 10, 2);
+        
+        // For block themes, hide post metadata blocks
+        add_filter('render_block', array($this, 'filter_note_metadata_blocks'), 10, 2);
+    }
+    
+    /**
+     * Filter the title display for notes
+     * Only shows title in admin, feeds, and navigation - hides in main content
+     */
+    public function filter_note_title($title, $post_id = null) {
+        // Don't modify in admin, feeds, or when not in the main loop
+        if (is_admin() || is_feed() || !in_the_loop() || !is_main_query()) {
+            return $title;
+        }
+        
+        $post = get_post($post_id);
+        if ($post && $post->post_type === 'note') {
+            // Return empty string - our content filter will add the proper note display
+            return '';
         }
         
         return $title;
     }
     
     /**
-     * Add inline styles to hide theme meta (more specific targeting)
+     * Filter block output to hide metadata blocks for notes
+     * Works with block themes (Twenty Twenty-Three, etc.)
      */
-    public function add_meta_hiding_styles() {
-        if (is_singular('note')) {
-            echo '<style>
-                body.single-note article.nostr-note .entry-meta:not(.nostr-note-meta),
-                body.single-note article.nostr-note .post-meta:not(.nostr-note-meta),
-                body.post-type-note.single article.nostr-note .entry-meta:not(.nostr-note-meta),
-                body.post-type-note.single article.nostr-note .post-meta:not(.nostr-note-meta),
-                body.single-note article.nostr-note > header .entry-meta,
-                body.single-note article.nostr-note > header .post-meta,
-                body.post-type-note.single article.nostr-note > header .entry-meta,
-                body.post-type-note.single article.nostr-note > header .post-meta,
-                body.single-note .wp-block-post-date,
-                body.post-type-note.single .wp-block-post-date,
-                body.single-note .wp-block-group:has(.wp-block-post-date),
-                body.post-type-note.single .wp-block-group:has(.wp-block-post-date) {
-                    display: none !important;
-                }
-            </style>';
+    public function filter_note_metadata_blocks($block_content, $block) {
+        // Only on single note pages
+        if (!is_singular('note')) {
+            return $block_content;
         }
+        
+        // Hide post date and post author blocks
+        if (in_array($block['blockName'], array('core/post-date', 'core/post-author'))) {
+            return '';
+        }
+        
+        return $block_content;
     }
     
     /**

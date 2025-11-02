@@ -3,53 +3,6 @@
  * Styles for displaying notes on the frontend across different themes
  */
 
-/* Single Note Page Styles - Hide duplicated titles */
-body.single-note .entry-title,
-body.single-note h1.entry-title,
-body.single-note .post-title,
-body.single-note h1.post-title,
-body.single-note h1.page-title,
-body.single-note .page-title,
-body.single-note article h1,
-body.single-note article .entry-header h1,
-body.single-note article header h1,
-body.single-note article .post-header h1,
-body.post-type-note.single .entry-title,
-body.post-type-note.single h1.entry-title,
-body.post-type-note.single .post-title,
-body.post-type-note.single h1.post-title {
-    display: none !important;
-}
-
-/* Hide entry header containing title on single note pages */
-body.single-note .entry-header,
-body.single-note .post-header,
-body.single-note header.entry-header,
-body.post-type-note.single .entry-header,
-body.post-type-note.single .post-header {
-    display: none !important;
-}
-
-/* Hide theme's meta row above content for notes */
-body.single-note .nostr-note .entry-meta:not(.nostr-note-meta),
-body.single-note .nostr-note .post-meta:not(.nostr-note-meta),
-body.post-type-note.single .nostr-note .entry-meta:not(.nostr-note-meta),
-body.post-type-note.single .nostr-note .post-meta:not(.nostr-note-meta),
-body.single-note article.nostr-note > .entry-meta,
-body.single-note article.nostr-note > .post-meta,
-body.post-type-note.single article.nostr-note > .entry-meta,
-body.post-type-note.single article.nostr-note > .post-meta {
-    display: none !important;
-}
-
-/* Hide block theme's post date and metadata groups for notes - target anywhere on page */
-body.single-note .wp-block-post-date,
-body.post-type-note.single .wp-block-post-date,
-body.single-note .wp-block-group:has(.wp-block-post-date),
-body.post-type-note.single .wp-block-group:has(.wp-block-post-date) {
-    display: none !important;
-}
-
 /* Single Note Card Styling - Match archive design */
 body.single-note article.nostr-note,
 body.post-type-note.single article.nostr-note {
