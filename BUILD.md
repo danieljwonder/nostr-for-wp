@@ -25,7 +25,7 @@ npm run build       # Minified, optimized build
 Your plugin now uses `@wordpress/scripts` for modern block development:
 
 **Before:** Edit `blocks/*/index.js` directly → Refresh WordPress  
-**After:** Edit `src/blocks/*/` files → Build → WordPress loads from `build/blocks/`
+**After:** Edit `src/blocks/*/` files → Build → WordPress loads from `build/`
 
 ### Directory Structure
 
@@ -40,7 +40,7 @@ src/blocks/              ← Edit these (source files)
 └── nostr-notes/
     └── (same)
 
-build/blocks/            ← WordPress loads these (auto-generated)
+build/                   ← WordPress loads these (auto-generated)
 ├── nostr-note/
 │   ├── index.js        # Compiled & minified
 │   ├── index.css       # Compiled editor styles
@@ -81,7 +81,7 @@ blocks/                  ← Old directory (can be deleted after testing)
 
 3. **Register in `nostr-for-wp.php`:**
    ```php
-   register_block_type(NOSTR_FOR_WP_PLUGIN_DIR . 'build/blocks/my-new-block');
+   register_block_type(NOSTR_FOR_WP_PLUGIN_DIR . 'build/my-new-block');
    ```
 
 4. **Build:**
@@ -103,7 +103,7 @@ blocks/                  ← Old directory (can be deleted after testing)
 ### Blocks not appearing in WordPress?
 ```bash
 npm run build                    # Make sure build ran
-ls build/blocks/nostr-note/      # Verify files exist
+ls build/nostr-note/             # Verify files exist
 ```
 
 ### Changes not reflecting?
@@ -122,7 +122,7 @@ npm run build
 
 **What to edit:**
 - ✅ `src/blocks/*/` - All source code
-- ❌ `build/blocks/*/` - Auto-generated (don't edit)
+- ❌ `build/*/` - Auto-generated (don't edit)
 - ❌ `node_modules/` - Dependencies (don't edit)
 
 **What to commit:**

@@ -7,9 +7,5 @@ module.exports = {
 		'nostr-note/index': path.resolve(process.cwd(), 'src/blocks/nostr-note', 'index.js'),
 		'nostr-notes/index': path.resolve(process.cwd(), 'src/blocks/nostr-notes', 'index.js'),
 	},
-	output: {
-		filename: '[name].js',
-		path: path.resolve(process.cwd(), 'build/blocks'),
-	},
 };
 

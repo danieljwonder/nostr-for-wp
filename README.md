@@ -45,7 +45,7 @@ See **[BUILD.md](BUILD.md)** for complete build documentation.
 
 ```
 src/blocks/          # Source files (edit these)
-build/blocks/        # Compiled files (auto-generated)
+build/               # Compiled files (auto-generated)
 includes/            # PHP classes
 admin/               # Admin interface
 ```
