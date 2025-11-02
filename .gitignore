@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+# IMPORTANT: Choose your strategy:
+# Option 1: Commit build/ for easy distribution (users don't need Node.js)
+# Option 2: Don't commit build/ for cleaner repo (developers must run npm build)
+# 
+# Currently: build/ is NOT ignored (committed to repository)
+# To change: uncomment the line below
+# build/
+
+# Asset files (auto-generated, always ignore)
+*.asset.php
+
+# Build artifacts and cache
+.eslintcache
+.wp-env.json
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# WordPress
+wp-content/
+wordpress/
+wp-config.php
+
+# Temporary files
+.cache/
+tmp/
+temp/
+
+# OS
+Thumbs.db
+
+# Legacy (can be removed after migration)
+# Uncomment once you've confirmed the new build system works:
+# blocks/
+

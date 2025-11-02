@@ -122,8 +122,8 @@ class Nostr_For_WP {
         Nostr_Frontend_Display::get_instance();
         Nostr_Note_Shortcode::get_instance();
         
-        // Register blocks (must be early to appear in block inserter)
-        add_action('init', array($this, 'register_blocks'), 10);
+        // Register blocks
+        add_action('init', array($this, 'register_blocks'), 20);
         
         if (is_admin()) {
             Nostr_Admin_Settings::get_instance();
@@ -265,21 +265,15 @@ class Nostr_For_WP {
             return;
         }
         
-        // Register Nostr Notes block using block.json
-        $notes_block_path = NOSTR_FOR_WP_PLUGIN_DIR . 'blocks/nostr-notes/block.json';
-        if (file_exists($notes_block_path)) {
-            register_block_type($notes_block_path, array(
-                'render_callback' => array($this, 'render_nostr_notes_block'),
-            ));
-        }
+        // Register Nostr Notes block (from build directory)
+        register_block_type(NOSTR_FOR_WP_PLUGIN_DIR . 'build/blocks/nostr-notes', array(
+            'render_callback' => array($this, 'render_nostr_notes_block'),
+        ));
         
-        // Register single Nostr Note block using block.json
-        $note_block_path = NOSTR_FOR_WP_PLUGIN_DIR . 'blocks/nostr-note/block.json';
-        if (file_exists($note_block_path)) {
-            register_block_type($note_block_path, array(
-                'render_callback' => array($this, 'render_nostr_note_block'),
-            ));
-        }
+        // Register single Nostr Note block (from build directory)
+        register_block_type(NOSTR_FOR_WP_PLUGIN_DIR . 'build/blocks/nostr-note', array(
+            'render_callback' => array($this, 'render_nostr_note_block'),
+        ));
     }
     
     /**

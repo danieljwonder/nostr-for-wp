@@ -1,0 +1,25 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "nostr-for-wp/note",
+	"version": "1.2.0",
+	"title": "Nostr Note",
+	"category": "widgets",
+	"icon": "format-chat",
+	"description": "Display a single Nostr note.",
+	"keywords": [ "nostr", "note", "social" ],
+	"textdomain": "nostr-for-wp",
+	"attributes": {
+		"noteId": {
+			"type": "number",
+			"default": 0
+		}
+	},
+	"supports": {
+		"html": false
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css"
+}
+

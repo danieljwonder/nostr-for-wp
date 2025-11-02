@@ -1,0 +1,23 @@
+/**
+ * The following styles get applied inside the editor only.
+ *
+ * Replace them with your own styles or remove the file completely.
+ */
+
+.wp-block-nostr-for-wp-notes {
+	.nostr-notes-block-placeholder {
+		padding: 1rem;
+		border: 1px dashed #ccc;
+		background: #fafafa;
+
+		p {
+			margin: 0.5rem 0;
+		}
+
+		.description {
+			font-size: 0.9rem;
+			color: #666;
+		}
+	}
+}
+

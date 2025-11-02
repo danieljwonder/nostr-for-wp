@@ -1,0 +1,16 @@
+/**
+ * The following styles get applied both on the front of your site
+ * and in the editor.
+ *
+ * Replace them with your own styles or remove the file completely.
+ */
+
+.wp-block-nostr-for-wp-note {
+	// Add frontend styles here
+	.nostr-note-preview {
+		padding: 1rem;
+		background: #f5f5f5;
+		border-radius: 4px;
+	}
+}
+

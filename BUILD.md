@@ -1,0 +1,140 @@
+# Build System Guide
+
+## 🚀 Quick Start
+
+### First Time Setup
+```bash
+npm install          # Install dependencies
+npm run build        # Build the blocks
+```
+
+### Development
+```bash
+npm start           # Watch mode - auto-rebuilds on changes
+# Edit files in src/blocks/
+# Save → Auto-rebuild → Refresh WordPress
+```
+
+### Production Build
+```bash
+npm run build       # Minified, optimized build
+```
+
+## What Changed
+
+Your plugin now uses `@wordpress/scripts` for modern block development:
+
+**Before:** Edit `blocks/*/index.js` directly → Refresh WordPress  
+**After:** Edit `src/blocks/*/` files → Build → WordPress loads from `build/blocks/`
+
+### Directory Structure
+
+```
+src/blocks/              ← Edit these (source files)
+├── nostr-note/
+│   ├── index.js        # Block registration
+│   ├── edit.js         # Editor component
+│   ├── save.js         # Save function
+│   ├── style.scss      # Frontend styles
+│   └── editor.scss     # Editor styles
+└── nostr-notes/
+    └── (same)
+
+build/blocks/            ← WordPress loads these (auto-generated)
+├── nostr-note/
+│   ├── index.js        # Compiled & minified
+│   ├── index.css       # Compiled editor styles
+│   └── style-index.css # Compiled frontend styles
+└── nostr-notes/
+    └── (same)
+
+blocks/                  ← Old directory (can be deleted after testing)
+```
+
+## Available Commands
+
+| Command | Purpose |
+|---------|---------|
+| `npm install` | Install dependencies (first time only) |
+| `npm start` | Development watch mode |
+| `npm run build` | Production build |
+| `npm run format` | Format code |
+| `npm run lint:js` | Lint JavaScript |
+| `npm run lint:css` | Lint CSS/SCSS |
+
+## Adding New Blocks
+
+1. **Create block directory:**
+   ```bash
+   cd src/blocks/
+   npx @wordpress/create-block@latest my-new-block --no-plugin
+   ```
+
+2. **Update `webpack.config.js`:**
+   ```javascript
+   entry: {
+       'nostr-note/index': path.resolve(process.cwd(), 'src/blocks/nostr-note', 'index.js'),
+       'nostr-notes/index': path.resolve(process.cwd(), 'src/blocks/nostr-notes', 'index.js'),
+       'my-new-block/index': path.resolve(process.cwd(), 'src/blocks/my-new-block', 'index.js'), // Add this
+   },
+   ```
+
+3. **Register in `nostr-for-wp.php`:**
+   ```php
+   register_block_type(NOSTR_FOR_WP_PLUGIN_DIR . 'build/blocks/my-new-block');
+   ```
+
+4. **Build:**
+   ```bash
+   npm run build
+   ```
+
+## Key Benefits
+
+✅ Modern ES6+ JavaScript with JSX  
+✅ SCSS preprocessing (variables, nesting)  
+✅ Automatic dependency management  
+✅ Development watch mode (auto-rebuild)  
+✅ Production optimization (minification)  
+✅ Code quality tools (ESLint, Prettier)  
+
+## Troubleshooting
+
+### Blocks not appearing in WordPress?
+```bash
+npm run build                    # Make sure build ran
+ls build/blocks/nostr-note/      # Verify files exist
+```
+
+### Changes not reflecting?
+- Edit files in `src/blocks/` (not `build/blocks/`)
+- Run `npm start` for auto-rebuild
+- Refresh your browser
+
+### Build errors?
+```bash
+rm -rf node_modules/ build/
+npm install
+npm run build
+```
+
+## Important Notes
+
+**What to edit:**
+- ✅ `src/blocks/*/` - All source code
+- ❌ `build/blocks/*/` - Auto-generated (don't edit)
+- ❌ `node_modules/` - Dependencies (don't edit)
+
+**What to commit:**
+- ✅ `src/` directory
+- ✅ `build/` directory (so users don't need Node.js)
+- ✅ `package.json` and `package-lock.json`
+- ❌ `node_modules/` (excluded in `.gitignore`)
+
+**After testing:**
+You can delete the old `blocks/` directory once you've confirmed everything works.
+
+## Resources
+
+- [@wordpress/scripts documentation](https://developer.wordpress.org/block-editor/reference-guides/packages/packages-scripts/)
+- [Block Editor Handbook](https://developer.wordpress.org/block-editor/)
