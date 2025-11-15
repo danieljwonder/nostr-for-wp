@@ -17,6 +17,15 @@
   "devDependencies": {
     "@wordpress/scripts": "^27.0.0"
   },
+  "files": [
+    "public/",
+    "admin/",
+    "build/",
+    "includes/",
+    "block-templates/",
+    "*.php",
+    "readme.txt"
+  ],
   "keywords": [
     "wordpress",
     "gutenberg",

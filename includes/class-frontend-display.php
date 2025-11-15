@@ -178,7 +178,7 @@ class Nostr_Frontend_Display {
         if (is_singular('note') || is_post_type_archive('note')) {
             wp_enqueue_style(
                 'nostr-for-wp-frontend',
-                NOSTR_FOR_WP_PLUGIN_URL . 'assets/css/nostr-frontend.css',
+                NOSTR_FOR_WP_PLUGIN_URL . 'public/css/nostr-frontend.css',
                 array(),
                 NOSTR_FOR_WP_VERSION
             );

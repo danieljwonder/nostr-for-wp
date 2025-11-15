@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Source files (only include built files)
+src/
+webpack.config.js
+.eslintrc.js
+
+# Development files
+.git/
+.gitignore
+.distignore
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Build artifacts and cache
+.eslintcache
+.wp-env.json
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# WordPress development
+wp-content/
+wordpress/
+wp-config.php
+
+# Temporary files
+.cache/
+tmp/
+temp/
+
+# OS
+Thumbs.db
+
+# Documentation 
+BUILD.md
+README.md
+
+# Package files (not needed in plugin zip)
+package.json
+package-lock.json
+

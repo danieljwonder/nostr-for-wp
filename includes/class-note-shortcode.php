@@ -72,7 +72,7 @@ class Nostr_Note_Shortcode {
         if ($should_enqueue) {
             wp_enqueue_style(
                 'nostr-for-wp-frontend',
-                NOSTR_FOR_WP_PLUGIN_URL . 'assets/css/nostr-frontend.css',
+                NOSTR_FOR_WP_PLUGIN_URL . 'public/css/nostr-frontend.css',
                 array(),
                 NOSTR_FOR_WP_VERSION
             );

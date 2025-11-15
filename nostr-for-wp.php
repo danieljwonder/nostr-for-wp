@@ -160,7 +160,7 @@ class Nostr_For_WP {
         if (strpos($hook, 'nostr-for-wp') !== false || strpos($hook, 'options-general') !== false) {
             wp_enqueue_script(
                 'nostr-for-wp-admin',
-                NOSTR_FOR_WP_PLUGIN_URL . 'admin/assets/js/nostr-admin.js',
+                NOSTR_FOR_WP_PLUGIN_URL . 'admin/js/nostr-admin.js',
                 array('jquery'),
                 NOSTR_FOR_WP_VERSION,
                 true
@@ -219,7 +219,7 @@ class Nostr_For_WP {
         if (in_array($hook, array('post.php', 'post-new.php'))) {
             wp_enqueue_script(
                 'nostr-for-wp-post-sync',
-                NOSTR_FOR_WP_PLUGIN_URL . 'admin/assets/js/nostr-post-sync.js',
+                NOSTR_FOR_WP_PLUGIN_URL . 'admin/js/nostr-post-sync.js',
                 array('jquery'),
                 NOSTR_FOR_WP_VERSION,
                 true
@@ -249,7 +249,7 @@ class Nostr_For_WP {
         if (strpos($hook, 'nostr-for-wp') !== false || strpos($hook, 'options-general') !== false || in_array($hook, array('post.php', 'post-new.php'))) {
             wp_enqueue_style(
                 'nostr-for-wp-admin',
-                NOSTR_FOR_WP_PLUGIN_URL . 'admin/assets/css/nostr-admin.css',
+                NOSTR_FOR_WP_PLUGIN_URL . 'admin/css/nostr-admin.css',
                 array(),
                 NOSTR_FOR_WP_VERSION
             );
