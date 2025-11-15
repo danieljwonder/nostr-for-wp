@@ -39,10 +39,12 @@ src/blocks/              ← Edit these (source files)
     └── editor.scss     # Editor styles
 
 build/                   ← WordPress loads these (auto-generated)
-└── nostr-notes/
-    ├── index.js        # Compiled & minified
-    ├── index.css       # Compiled editor styles
-    └── style-index.css # Compiled frontend styles
+└── blocks/
+    └── nostr-notes/
+        ├── block.json  # Block metadata
+        ├── index.js   # Compiled & minified
+        ├── index.css  # Compiled editor styles
+        └── style-index.css # Compiled frontend styles
 
 blocks/                  ← Old directory (can be deleted after testing)
 ```
@@ -66,17 +68,12 @@ blocks/                  ← Old directory (can be deleted after testing)
    npx @wordpress/create-block@latest my-new-block --no-plugin
    ```
 
-2. **Update `webpack.config.js`:**
-   ```javascript
-   entry: {
-       'nostr-notes/index': path.resolve(process.cwd(), 'src/blocks/nostr-notes', 'index.js'),
-       'my-new-block/index': path.resolve(process.cwd(), 'src/blocks/my-new-block', 'index.js'), // Add this
-   },
-   ```
+2. **No webpack.config.js changes needed!**
+   `@wordpress/scripts` automatically detects `block.json` files in `src/blocks/` and builds them to `build/blocks/`.
 
 3. **Register in `nostr-for-wp.php`:**
    ```php
-   register_block_type(NOSTR_FOR_WP_PLUGIN_DIR . 'build/my-new-block');
+   register_block_type(NOSTR_FOR_WP_PLUGIN_DIR . 'build/blocks/my-new-block');
    ```
 
 4. **Build:**
@@ -98,7 +95,7 @@ blocks/                  ← Old directory (can be deleted after testing)
 ### Blocks not appearing in WordPress?
 ```bash
 npm run build                    # Make sure build ran
-ls build/nostr-notes/           # Verify files exist
+ls build/blocks/nostr-notes/    # Verify files exist
 ```
 
 ### Changes not reflecting?

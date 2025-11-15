@@ -266,7 +266,7 @@ class Nostr_For_WP {
         }
         
         // Register Nostr Notes block (from build directory)
-        register_block_type(NOSTR_FOR_WP_PLUGIN_DIR . 'build/nostr-notes', array(
+        register_block_type(NOSTR_FOR_WP_PLUGIN_DIR . 'build/blocks/nostr-notes', array(
             'render_callback' => array($this, 'render_nostr_notes_block'),
         ));
     }
