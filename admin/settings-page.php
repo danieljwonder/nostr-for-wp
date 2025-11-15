@@ -218,8 +218,8 @@ class Nostr_Admin_Settings {
                     </div>
                     
                     <p>
-                        <button type="button" class="button" id="nostr-force-sync"><?php _e('Force Sync Now', 'nostr-for-wp'); ?></button>
-                        <button type="button" class="button button-secondary" id="nostr-force-full-resync"><?php _e('Force Full Resync', 'nostr-for-wp'); ?></button>
+                        <button type="button" class="button" id="nostr-force-sync"><?php _e('Sync Latest Notes', 'nostr-for-wp'); ?></button>
+                        <button type="button" class="button button-secondary" id="nostr-force-full-resync"><?php _e('Sync All Notes', 'nostr-for-wp'); ?></button>
                         <button type="button" class="button" id="nostr-test-all-relays"><?php _e('Test All Relays', 'nostr-for-wp'); ?></button>
                     </p>
                     
@@ -416,7 +416,7 @@ class Nostr_Admin_Settings {
         
         if ($result !== false) {
             $message = $force_full_resync 
-                ? sprintf('Full resync completed: %d processed, %d skipped', $result['processed'], $result['skipped'])
+                ? sprintf('Sync all notes completed: %d processed, %d skipped', $result['processed'], $result['skipped'])
                 : sprintf('Sync completed: %d processed, %d skipped', $result['processed'], $result['skipped']);
             wp_send_json_success($message);
         } else {

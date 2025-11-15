@@ -493,18 +493,18 @@
             }).fail(function() {
                 showMessage('Sync request failed', 'error');
             }).always(function() {
-                button.prop('disabled', false).text('Force Sync Now');
+                button.prop('disabled', false).text('Sync Latest Notes');
             });
         });
         
         // Force full resync (inbound only - all events)
         $('#nostr-force-full-resync').on('click', function() {
-            if (!confirm('Are you sure you want to do a full resync? This will re-process all events from Nostr, which may take a while.')) {
+            if (!confirm('Are you sure you want to sync all notes? This will re-process all events from Nostr, which may take a while.')) {
                 return;
             }
             
             var button = $(this);
-            button.prop('disabled', true).text('Full Resyncing...');
+            button.prop('disabled', true).text('Syncing All Notes...');
             
             $.post(ajaxurl, {
                 action: 'nostr_force_sync',
@@ -512,17 +512,17 @@
                 nonce: nostrForWPAdmin.nonce
             }).done(function(response) {
                 if (response.success) {
-                    showMessage(response.data || 'Full resync completed', 'success');
+                    showMessage(response.data || 'Sync all notes completed', 'success');
                     setTimeout(function() {
                         location.reload();
                     }, 2000);
                 } else {
-                    showMessage(response.data || 'Full resync failed', 'error');
+                    showMessage(response.data || 'Sync all notes failed', 'error');
                 }
             }).fail(function() {
-                showMessage('Full resync request failed', 'error');
+                showMessage('Sync all notes request failed', 'error');
             }).always(function() {
-                button.prop('disabled', false).text('Force Full Resync');
+                button.prop('disabled', false).text('Sync All Notes');
             });
         });
         

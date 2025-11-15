@@ -193,7 +193,7 @@ class Nostr_For_WP {
                     'disconnectFailed' => __('Failed to disconnect', 'nostr-for-wp'),
                     'connect' => __('Connect with NIP-07', 'nostr-for-wp'),
                     'disconnect' => __('Disconnect', 'nostr-for-wp'),
-                    'forceSync' => __('Force Sync Now', 'nostr-for-wp'),
+                    'forceSync' => __('Sync Latest Notes', 'nostr-for-wp'),
                     'testAllRelays' => __('Test All Relays', 'nostr-for-wp'),
                     'syncing' => __('Syncing...', 'nostr-for-wp'),
                     'syncNow' => __('Sync Now', 'nostr-for-wp'),
