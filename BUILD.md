@@ -31,22 +31,18 @@ Your plugin now uses `@wordpress/scripts` for modern block development:
 
 ```
 src/blocks/              ← Edit these (source files)
-├── nostr-note/
-│   ├── index.js        # Block registration
-│   ├── edit.js         # Editor component
-│   ├── save.js         # Save function
-│   ├── style.scss      # Frontend styles
-│   └── editor.scss     # Editor styles
 └── nostr-notes/
-    └── (same)
+    ├── index.js        # Block registration
+    ├── edit.js         # Editor component
+    ├── save.js         # Save function
+    ├── style.scss      # Frontend styles
+    └── editor.scss     # Editor styles
 
 build/                   ← WordPress loads these (auto-generated)
-├── nostr-note/
-│   ├── index.js        # Compiled & minified
-│   ├── index.css       # Compiled editor styles
-│   └── style-index.css # Compiled frontend styles
 └── nostr-notes/
-    └── (same)
+    ├── index.js        # Compiled & minified
+    ├── index.css       # Compiled editor styles
+    └── style-index.css # Compiled frontend styles
 
 blocks/                  ← Old directory (can be deleted after testing)
 ```
@@ -73,7 +69,6 @@ blocks/                  ← Old directory (can be deleted after testing)
 2. **Update `webpack.config.js`:**
    ```javascript
    entry: {
-       'nostr-note/index': path.resolve(process.cwd(), 'src/blocks/nostr-note', 'index.js'),
        'nostr-notes/index': path.resolve(process.cwd(), 'src/blocks/nostr-notes', 'index.js'),
        'my-new-block/index': path.resolve(process.cwd(), 'src/blocks/my-new-block', 'index.js'), // Add this
    },
@@ -103,7 +98,7 @@ blocks/                  ← Old directory (can be deleted after testing)
 ### Blocks not appearing in WordPress?
 ```bash
 npm run build                    # Make sure build ran
-ls build/nostr-note/             # Verify files exist
+ls build/nostr-notes/           # Verify files exist
 ```
 
 ### Changes not reflecting?

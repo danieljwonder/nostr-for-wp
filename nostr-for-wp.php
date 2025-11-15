@@ -269,11 +269,6 @@ class Nostr_For_WP {
         register_block_type(NOSTR_FOR_WP_PLUGIN_DIR . 'build/nostr-notes', array(
             'render_callback' => array($this, 'render_nostr_notes_block'),
         ));
-        
-        // Register single Nostr Note block (from build directory)
-        register_block_type(NOSTR_FOR_WP_PLUGIN_DIR . 'build/nostr-note', array(
-            'render_callback' => array($this, 'render_nostr_note_block'),
-        ));
     }
     
     /**
@@ -292,21 +287,6 @@ class Nostr_For_WP {
             esc_attr($attributes['orderby']),
             esc_attr($attributes['order'])
         ));
-    }
-    
-    /**
-     * Render single Nostr Note block
-     */
-    public function render_nostr_note_block($attributes) {
-        $attributes = wp_parse_args($attributes, array(
-            'noteId' => 0,
-        ));
-        
-        if (!$attributes['noteId']) {
-            return '<p>' . esc_html__('Please select a note.', 'nostr-for-wp') . '</p>';
-        }
-        
-        return do_shortcode(sprintf('[nostr_note id="%d"]', intval($attributes['noteId'])));
     }
     
     /**
