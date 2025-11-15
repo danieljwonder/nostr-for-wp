@@ -20,12 +20,16 @@ npm start           # Watch mode - auto-rebuilds on changes
 npm run build       # Minified, optimized build
 ```
 
-## What Changed
+### Creating Plugin ZIP for Distribution
+```bash
+npm run plugin-zip  # Creates a ZIP file ready for WordPress installation
+```
 
-Your plugin now uses `@wordpress/scripts` for modern block development:
+This command creates a distributable ZIP file of the plugin, automatically excluding development files like `node_modules/`, `.git/`, and other non-essential files. The ZIP file will be created in the project root directory and can be directly uploaded to WordPress or distributed to users.
 
-**Before:** Edit `blocks/*/index.js` directly → Refresh WordPress  
-**After:** Edit `src/blocks/*/` files → Build → WordPress loads from `build/`
+**Note:** Make sure to run `npm run build` first to ensure all compiled assets are included in the ZIP file.
+
+
 
 ### Directory Structure
 
@@ -45,8 +49,6 @@ build/                   ← WordPress loads these (auto-generated)
         ├── index.js   # Compiled & minified
         ├── index.css  # Compiled editor styles
         └── style-index.css # Compiled frontend styles
-
-blocks/                  ← Old directory (can be deleted after testing)
 ```
 
 ## Available Commands
@@ -56,6 +58,7 @@ blocks/                  ← Old directory (can be deleted after testing)
 | `npm install` | Install dependencies (first time only) |
 | `npm start` | Development watch mode |
 | `npm run build` | Production build |
+| `npm run plugin-zip` | Create distributable plugin ZIP file |
 | `npm run format` | Format code |
 | `npm run lint:js` | Lint JavaScript |
 | `npm run lint:css` | Lint CSS/SCSS |
