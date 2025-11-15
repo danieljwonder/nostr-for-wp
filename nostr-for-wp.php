@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Nostr for WordPress
+ * Plugin Name: Nostr for WP
  * Plugin URI: https://github.com/danieljwonder/nostr-for-wp
  * Description: Two-way synchronization between WordPress content and Nostr protocol. Supports kind 1 notes and kind 30023 long-form content with NIP-07 browser extension signing.
  * Version: 1.2.0
