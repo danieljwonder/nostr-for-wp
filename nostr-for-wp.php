@@ -145,7 +145,7 @@ class Nostr_For_WP {
     public function admin_menu() {
         add_options_page(
             __('Nostr Settings', 'nostr-for-wp'),
-            __('Nostr', 'nostr-for-wp'),
+            __('Nostr for WP', 'nostr-for-wp'),
             'manage_options',
             'nostr-for-wp',
             array('Nostr_Admin_Settings', 'render_settings_page')

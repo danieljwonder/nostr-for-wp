@@ -1,23 +1,24 @@
 # Nostr for WordPress
 
-Two-way synchronization between WordPress content and Nostr protocol. Supports kind 1 notes and kind 30023 long-form content with NIP-07 browser extension signing.
+Two-way synchronization between WordPress content and Nostr protocol. Supports standard kind 1 notes and kind 30023 long-form content with NIP-07 browser extension signing.
 
 ## Features
 
 - 🔄 Two-way sync between WordPress and Nostr
-- 📝 Support for kind 1 (short notes) and kind 30023 (long-form articles)  
-- 🔐 NIP-07 browser extension integration
-- 🎨 Gutenberg blocks for displaying Nostr content
+- 📝 Supports kind 1 (short notes) as WordPress Custom Post Type
+- 📝 Supports kind 30023 (long-form articles) for standard WordPress posts
+- 🔁 Automatic background sync of inbound notes
+- 🔐 NIP-07 browser extension integration for outbound notes
+- 🎨 Gutenberg block for displaying Nostr notes archive
 - ⚡ WebSocket relay connections
-- 🔁 Automatic background sync
 
 ## Quick Start
 
 ### For Users
 
 1. Install and activate the plugin in WordPress
-2. Go to Settings > Nostr to configure
-3. Add blocks to your posts/pages
+2. Go to Settings > Nostr to configure and connect your Nostr key.
+3. Either use the standard archives, or add the Nostr for WP block to your posts/pages
 
 ### For Developers
 
@@ -27,11 +28,6 @@ git clone https://github.com/danieljwonder/nostr-for-wp.git
 cd nostr-for-wp
 npm install
 npm run build
-
-# Development
-npm start           # Watch mode with auto-rebuild
-# Edit files in src/blocks/
-```
 
 See **[BUILD.md](BUILD.md)** for complete build documentation.
 
