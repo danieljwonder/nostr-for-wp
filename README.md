@@ -5,12 +5,12 @@ Two-way synchronization between WordPress content and Nostr protocol. Supports s
 ## Features
 
 - 🔄 Two-way sync between WordPress and Nostr
-- 📝 Supports kind 1 (short notes) as WordPress Custom Post Type
+- 💬 Supports kind 1 (short notes) as WordPress Custom Post Type
 - 📝 Supports kind 30023 (long-form articles) for standard WordPress posts
 - 🔁 Automatic background sync of inbound notes
 - 🔐 NIP-07 browser extension integration for outbound notes
 - 🎨 Gutenberg block for displaying Nostr notes archive
-- ⚡ WebSocket relay connections
+- ⚡ WebSocket relay configuration
 
 ## Quick Start
 

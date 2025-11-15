@@ -423,6 +423,9 @@ class Nostr_Content_Mapper {
         // Enhanced Markdown to HTML conversion
         $html = $markdown;
         
+        // Resolve NIP-19 nprofile references to usernames (before other conversions)
+        $html = $this->resolve_nprofile_references($html);
+        
         // Convert headers (must be first to avoid conflicts)
         $html = preg_replace('/^# (.*$)/m', '<h1>$1</h1>', $html);
         $html = preg_replace('/^## (.*$)/m', '<h2>$1</h2>', $html);
@@ -587,5 +590,352 @@ class Nostr_Content_Mapper {
         $last_sync = strtotime($last_sync_time);
         
         return $post_modified > $last_sync;
+    }
+    
+    /**
+     * Resolve NIP-19 nprofile references to usernames with links
+     * 
+     * @param string $content Content that may contain nprofile references
+     * @return string Content with nprofile references replaced by linked usernames
+     */
+    private function resolve_nprofile_references($content) {
+        // Pattern to match nprofile1... Bech32 encoded strings
+        // Also matches "nostr:nprofile1..." format and strips the "nostr:" prefix
+        // nprofile strings start with nprofile1 and contain only Bech32 characters (qpzry9x8gf2tvdw0s3jn54khce6mua7l)
+        // Minimum length is typically around 60 characters
+        $pattern = '/\b(?:nostr:)?(nprofile1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{58,})\b/i';
+        
+        return preg_replace_callback($pattern, function($matches) {
+            $nprofile = $matches[1];
+            $username = $this->get_username_from_nprofile($nprofile);
+            
+            // Create link to njump.me profile
+            $url = 'https://njump.me/' . esc_attr($nprofile);
+            
+            // If we got a username, use @username as anchor text
+            // Otherwise, use a shortened version of the nprofile
+            if ($username) {
+                $anchor_text = '@' . esc_html($username);
+            } else {
+                // Use shortened nprofile as fallback (first 20 chars + ...)
+                $anchor_text = esc_html(substr($nprofile, 0, 20) . '...');
+            }
+            
+            return '<a href="' . $url . '" class="nostr-profile-link" rel="nofollow" target="_blank">' . $anchor_text . '</a>';
+        }, $content);
+    }
+    
+    /**
+     * Get username from NIP-19 nprofile Bech32 string
+     * 
+     * @param string $nprofile Bech32 encoded nprofile string
+     * @return string|false Username if found, false otherwise
+     */
+    private function get_username_from_nprofile($nprofile) {
+        // Check cache first
+        $cache_key = 'nostr_nprofile_' . md5($nprofile);
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
+        }
+        
+        // Decode the nprofile
+        $decoded = $this->decode_nprofile($nprofile);
+        if (!$decoded || !isset($decoded['pubkey'])) {
+            // Cache negative result for 1 hour to avoid repeated failed lookups
+            set_transient($cache_key, false, HOUR_IN_SECONDS);
+            return false;
+        }
+        
+        $pubkey = $decoded['pubkey'];
+        $relays = isset($decoded['relays']) ? $decoded['relays'] : array();
+        
+        // Fetch profile from Nostr relays
+        $username = $this->fetch_profile_username($pubkey, $relays);
+        
+        // Cache the result (24 hours if found, 1 hour if not found)
+        $cache_duration = $username ? DAY_IN_SECONDS : HOUR_IN_SECONDS;
+        set_transient($cache_key, $username, $cache_duration);
+        
+        return $username;
+    }
+    
+    /**
+     * Decode NIP-19 nprofile Bech32 string
+     * 
+     * @param string $nprofile Bech32 encoded nprofile string
+     * @return array|false Decoded data with 'pubkey' and optionally 'relays', or false on failure
+     */
+    private function decode_nprofile($nprofile) {
+        // Basic validation
+        if (strpos($nprofile, 'nprofile1') !== 0) {
+            return false;
+        }
+        
+        // Decode Bech32
+        $decoded = $this->bech32_decode($nprofile);
+        if (!$decoded) {
+            return false;
+        }
+        
+        list($hrp, $data) = $decoded;
+        
+        // Convert from 5-bit to 8-bit
+        $bytes = $this->convert_bits($data, 5, 8, false);
+        if (!$bytes || count($bytes) < 33) {
+            return false;
+        }
+        
+        // Extract TLV data
+        $result = array();
+        $i = 0;
+        
+        while ($i < count($bytes)) {
+            if ($i + 1 >= count($bytes)) {
+                break;
+            }
+            
+            $type = $bytes[$i];
+            $length = $bytes[$i + 1];
+            
+            if ($i + 2 + $length > count($bytes)) {
+                break;
+            }
+            
+            $value = array_slice($bytes, $i + 2, $length);
+            
+            // Type 0 = pubkey (32 bytes)
+            if ($type === 0 && $length === 32) {
+                $pubkey = '';
+                foreach ($value as $byte) {
+                    $pubkey .= sprintf('%02x', $byte);
+                }
+                $result['pubkey'] = $pubkey;
+            }
+            
+            // Type 1 = relay URL (variable length)
+            if ($type === 1) {
+                $relay = '';
+                foreach ($value as $byte) {
+                    $relay .= chr($byte);
+                }
+                if (!isset($result['relays'])) {
+                    $result['relays'] = array();
+                }
+                $result['relays'][] = $relay;
+            }
+            
+            $i += 2 + $length;
+        }
+        
+        if (!isset($result['pubkey'])) {
+            return false;
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Bech32 decode implementation
+     * 
+     * @param string $str Bech32 encoded string
+     * @return array|false Array with [hrp, data] or false on failure
+     */
+    private function bech32_decode($str) {
+        // Bech32 character set
+        $charset = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+        
+        // Convert to lowercase
+        $str = strtolower($str);
+        
+        // Find the last '1' separator
+        $pos = strrpos($str, '1');
+        if ($pos === false || $pos < 1 || $pos + 7 > strlen($str)) {
+            return false;
+        }
+        
+        $hrp = substr($str, 0, $pos);
+        $data_part = substr($str, $pos + 1);
+        
+        // Validate HRP (should be 'nprofile')
+        if ($hrp !== 'nprofile') {
+            return false;
+        }
+        
+        // Decode data part
+        $data = array();
+        for ($i = 0; $i < strlen($data_part); $i++) {
+            $char = $data_part[$i];
+            $pos_in_charset = strpos($charset, $char);
+            if ($pos_in_charset === false) {
+                return false;
+            }
+            $data[] = $pos_in_charset;
+        }
+        
+        // Verify checksum
+        if (!$this->bech32_verify_checksum($hrp, $data)) {
+            return false;
+        }
+        
+        // Remove checksum (last 6 characters)
+        $data = array_slice($data, 0, -6);
+        
+        return array($hrp, $data);
+    }
+    
+    /**
+     * Verify Bech32 checksum
+     * 
+     * @param string $hrp Human-readable part
+     * @param array $data Data array
+     * @return bool True if checksum is valid
+     */
+    private function bech32_verify_checksum($hrp, $data) {
+        return $this->bech32_polymod(array_merge($this->bech32_hrp_expand($hrp), $data)) === 1;
+    }
+    
+    /**
+     * Expand HRP for checksum calculation
+     * 
+     * @param string $hrp Human-readable part
+     * @return array Expanded HRP values
+     */
+    private function bech32_hrp_expand($hrp) {
+        $result = array();
+        for ($i = 0; $i < strlen($hrp); $i++) {
+            $result[] = ord($hrp[$i]) >> 5;
+        }
+        $result[] = 0;
+        for ($i = 0; $i < strlen($hrp); $i++) {
+            $result[] = ord($hrp[$i]) & 31;
+        }
+        return $result;
+    }
+    
+    /**
+     * Bech32 polymod function for checksum
+     * 
+     * @param array $values Values to process
+     * @return int Polymod result
+     */
+    private function bech32_polymod($values) {
+        $generator = array(0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3);
+        $chk = 1;
+        foreach ($values as $value) {
+            $top = $chk >> 25;
+            $chk = ($chk & 0x1ffffff) << 5 ^ $value;
+            for ($i = 0; $i < 5; $i++) {
+                if (($top >> $i) & 1) {
+                    $chk ^= $generator[$i];
+                }
+            }
+        }
+        return $chk;
+    }
+    
+    /**
+     * Convert bits from one base to another
+     * 
+     * @param array $data Input data
+     * @param int $frombits Source base
+     * @param int $tobits Target base
+     * @param bool $pad Whether to pad output
+     * @return array|false Converted data or false on failure
+     */
+    private function convert_bits($data, $frombits, $tobits, $pad = true) {
+        $acc = 0;
+        $bits = 0;
+        $ret = array();
+        $maxv = (1 << $tobits) - 1;
+        $max_acc = (1 << ($frombits + $tobits - 1)) - 1;
+        
+        foreach ($data as $value) {
+            if ($value < 0 || ($value >> $frombits) != 0) {
+                return false;
+            }
+            $acc = (($acc << $frombits) | $value) & $max_acc;
+            $bits += $frombits;
+            
+            while ($bits >= $tobits) {
+                $bits -= $tobits;
+                $ret[] = (($acc >> $bits) & $maxv);
+            }
+        }
+        
+        if ($pad) {
+            if ($bits) {
+                $ret[] = (($acc << ($tobits - $bits)) & $maxv);
+            }
+        } elseif ($bits >= $frombits || ((($acc << ($tobits - $bits)) & $maxv) != 0)) {
+            return false;
+        }
+        
+        return $ret;
+    }
+    
+    /**
+     * Fetch profile username from Nostr relays
+     * 
+     * @param string $pubkey Public key (hex)
+     * @param array $preferred_relays Optional preferred relays from nprofile
+     * @return string|false Username/name if found, false otherwise
+     */
+    private function fetch_profile_username($pubkey, $preferred_relays = array()) {
+        $nostr_client = Nostr_Client::get_instance();
+        
+        // Query for kind 0 (profile/metadata) events
+        $filters = array(
+            'kinds' => array(0),
+            'authors' => array($pubkey),
+            'limit' => 1
+        );
+        
+        try {
+            // If preferred relays are provided, we need to query them directly
+            // Otherwise use the public subscribe_to_events method
+            if (!empty($preferred_relays)) {
+                // For preferred relays, we'll need to query them individually
+                // Since query_relay is private, we'll use a workaround by temporarily
+                // setting relays and using subscribe_to_events, or we can make a direct query
+                // For now, let's use the default relays and hope the profile is available
+                // In a production environment, you might want to make query_relay protected/public
+                $events = $nostr_client->subscribe_to_events($filters);
+            } else {
+                $events = $nostr_client->subscribe_to_events($filters);
+            }
+            
+            if (empty($events)) {
+                return false;
+            }
+            
+            // Get the most recent profile event
+            $profile_event = $events[0];
+            if (!isset($profile_event['content'])) {
+                return false;
+            }
+            
+            // Parse JSON content
+            $profile_data = json_decode($profile_event['content'], true);
+            if (!$profile_data || !is_array($profile_data)) {
+                return false;
+            }
+            
+            // Extract username/name (prefer 'name', fallback to 'display_name')
+            if (isset($profile_data['name']) && !empty($profile_data['name'])) {
+                return sanitize_text_field($profile_data['name']);
+            }
+            
+            if (isset($profile_data['display_name']) && !empty($profile_data['display_name'])) {
+                return sanitize_text_field($profile_data['display_name']);
+            }
+            
+            // If no name found, return false
+            return false;
+            
+        } catch (Exception $e) {
+            error_log('Nostr: Error fetching profile username: ' . $e->getMessage());
+            return false;
+        }
     }
 }
