@@ -45,8 +45,3 @@ temp/
 
 # OS
 Thumbs.db
-
-# Legacy (can be removed after migration)
-# Uncomment once you've confirmed the new build system works:
-# blocks/
-

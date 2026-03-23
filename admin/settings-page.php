@@ -47,6 +47,7 @@ class Nostr_Admin_Settings {
         add_action('wp_ajax_nostr_get_post_event', array($this, 'get_post_event_ajax'));
         add_action('wp_ajax_nostr_publish_event', array($this, 'publish_event_ajax'));
         add_action('wp_ajax_nostr_mark_post_synced', array($this, 'mark_post_synced_ajax'));
+        add_action('wp_ajax_nostr_save_nip05', array($this, 'save_nip05_ajax'));
     }
     
     /**
@@ -200,6 +201,91 @@ class Nostr_Admin_Settings {
                     </form>
                 </div>
                 
+                <!-- NIP-05 Identity -->
+                <?php
+                $nip05_data    = self::get_nip05_data();
+                $nip05_file    = ABSPATH . '.well-known/nostr.json';
+                $nip05_dir     = ABSPATH . '.well-known';
+                $nip05_exists  = file_exists($nip05_file);
+                $nip05_writable = $nip05_exists ? is_writable($nip05_file) : is_writable($nip05_dir) || !file_exists($nip05_dir);
+                $site_pubkey   = $connection_status['connected'] ? $connection_status['public_key'] : '';
+                ?>
+                <div class="nostr-card nostr-card-full">
+                    <h2><?php _e('NIP-05 Identity', 'nostr-for-wp'); ?></h2>
+                    <p class="description">
+                        <?php _e('NIP-05 lets people verify your Nostr identity via your domain (e.g. <code>you@yourdomain.com</code>). This creates a real <code>.well-known/nostr.json</code> file on your server.', 'nostr-for-wp'); ?>
+                    </p>
+
+                    <div class="nostr-nip05-status" style="margin-bottom:15px;">
+                        <?php if ($nip05_exists): ?>
+                            <span class="dashicons dashicons-yes-alt" style="color:green;vertical-align:middle;"></span>
+                            <strong><?php _e('File exists:', 'nostr-for-wp'); ?></strong>
+                            <code><?php echo esc_html(str_replace(ABSPATH, '/', $nip05_file)); ?></code>
+                        <?php else: ?>
+                            <span class="dashicons dashicons-minus" style="color:#999;vertical-align:middle;"></span>
+                            <strong><?php _e('File does not exist yet.', 'nostr-for-wp'); ?></strong>
+                        <?php endif; ?>
+                        &nbsp;
+                        <?php if ($nip05_writable): ?>
+                            <span style="color:green;"><?php _e('(writable)', 'nostr-for-wp'); ?></span>
+                        <?php else: ?>
+                            <span style="color:red;"><?php _e('(not writable — check server permissions)', 'nostr-for-wp'); ?></span>
+                        <?php endif; ?>
+                    </div>
+
+                    <table class="form-table" style="margin-bottom:0;">
+                        <tr>
+                            <th scope="row"><?php _e('Identifiers', 'nostr-for-wp'); ?></th>
+                            <td>
+                                <div id="nip05-names-list">
+                                    <?php if (!empty($nip05_data['names'])): ?>
+                                        <?php foreach ($nip05_data['names'] as $name => $pubkey): ?>
+                                        <div class="nip05-row">
+                                            <input type="text"  class="nip05-name"   value="<?php echo esc_attr($name); ?>"   placeholder="<?php esc_attr_e('name (e.g. _ or alice)', 'nostr-for-wp'); ?>" style="width:160px;">
+                                            <span style="padding:0 6px;line-height:30px;">→</span>
+                                            <input type="text"  class="nip05-pubkey" value="<?php echo esc_attr($pubkey); ?>" placeholder="<?php esc_attr_e('64-char hex pubkey', 'nostr-for-wp'); ?>" style="width:480px;font-family:monospace;">
+                                            <?php if ($site_pubkey && $pubkey !== $site_pubkey): ?>
+                                            <?php endif; ?>
+                                            <button type="button" class="button nip05-remove-row"><?php _e('Remove', 'nostr-for-wp'); ?></button>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <div class="nip05-row">
+                                            <input type="text"  class="nip05-name"   value="" placeholder="<?php esc_attr_e('name (e.g. _ or alice)', 'nostr-for-wp'); ?>" style="width:160px;">
+                                            <span style="padding:0 6px;line-height:30px;">→</span>
+                                            <input type="text"  class="nip05-pubkey" value="" placeholder="<?php esc_attr_e('64-char hex pubkey', 'nostr-for-wp'); ?>" style="width:480px;font-family:monospace;">
+                                            <button type="button" class="button nip05-remove-row"><?php _e('Remove', 'nostr-for-wp'); ?></button>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+
+                                <p style="margin-top:10px;">
+                                    <button type="button" class="button" id="nip05-add-row"><?php _e('+ Add Identifier', 'nostr-for-wp'); ?></button>
+                                    <?php if ($site_pubkey): ?>
+                                    <button type="button" class="button" id="nip05-use-site-key" data-pubkey="<?php echo esc_attr($site_pubkey); ?>"><?php _e('Use Connected Site Key', 'nostr-for-wp'); ?></button>
+                                    <?php endif; ?>
+                                </p>
+
+                                <p class="description">
+                                    <?php _e('Use <code>_</code> as the name to make your identity <code>you@yourdomain.com</code> (root domain identifier).', 'nostr-for-wp'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p style="margin-top:15px;">
+                        <button type="button" class="button button-primary" id="nip05-save"><?php _e('Save nostr.json', 'nostr-for-wp'); ?></button>
+                        <span id="nip05-save-status" style="margin-left:10px;"></span>
+                    </p>
+
+                    <?php if ($nip05_exists && !empty($nip05_data['names'])): ?>
+                    <div style="margin-top:15px;">
+                        <strong><?php _e('Current file preview:', 'nostr-for-wp'); ?></strong>
+                        <pre style="background:#f6f7f7;border:1px solid #ddd;padding:10px;margin-top:5px;overflow:auto;font-size:12px;"><?php echo esc_html(json_encode(array('names' => $nip05_data['names']), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)); ?></pre>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
                 <!-- Sync Status -->
                 <div class="nostr-card">
                     <h2><?php _e('Sync Status', 'nostr-for-wp'); ?></h2>
@@ -281,7 +367,99 @@ class Nostr_Admin_Settings {
         .nostr-sync-stats p {
             margin: 10px 0;
         }
+
+        .nostr-card-full {
+            grid-column: 1 / -1;
+        }
+
+        .nip05-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 6px;
+        }
         </style>
+
+        <script>
+        (function($) {
+            var nonce = <?php echo json_encode(wp_create_nonce('nostr_for_wp_admin_nonce')); ?>;
+
+            function addNip05Row(name, pubkey) {
+                var row = $('<div class="nip05-row">' +
+                    '<input type="text" class="nip05-name" placeholder="<?php esc_attr_e('name (e.g. _ or alice)', 'nostr-for-wp'); ?>" style="width:160px;">' +
+                    '<span style="padding:0 6px;line-height:30px;">→</span>' +
+                    '<input type="text" class="nip05-pubkey" placeholder="<?php esc_attr_e('64-char hex pubkey', 'nostr-for-wp'); ?>" style="width:480px;font-family:monospace;">' +
+                    '<button type="button" class="button nip05-remove-row"><?php esc_html_e('Remove', 'nostr-for-wp'); ?></button>' +
+                    '</div>');
+                if (name)   row.find('.nip05-name').val(name);
+                if (pubkey) row.find('.nip05-pubkey').val(pubkey);
+                $('#nip05-names-list').append(row);
+            }
+
+            $(document).on('click', '.nip05-remove-row', function() {
+                var $list = $('#nip05-names-list');
+                if ($list.find('.nip05-row').length > 1) {
+                    $(this).closest('.nip05-row').remove();
+                } else {
+                    $(this).closest('.nip05-row').find('input').val('');
+                }
+            });
+
+            $('#nip05-add-row').on('click', function() {
+                addNip05Row('', '');
+            });
+
+            $('#nip05-use-site-key').on('click', function() {
+                var pubkey = $(this).data('pubkey');
+                // Find first empty pubkey row or add a new one
+                var $empty = $('#nip05-names-list .nip05-row').filter(function() {
+                    return $(this).find('.nip05-pubkey').val() === '';
+                }).first();
+                if ($empty.length) {
+                    $empty.find('.nip05-pubkey').val(pubkey);
+                    if ($empty.find('.nip05-name').val() === '') {
+                        $empty.find('.nip05-name').val('_');
+                    }
+                } else {
+                    addNip05Row('_', pubkey);
+                }
+            });
+
+            $('#nip05-save').on('click', function() {
+                var $btn    = $(this);
+                var $status = $('#nip05-save-status');
+                var names   = [];
+                var pubkeys = [];
+
+                $('#nip05-names-list .nip05-row').each(function() {
+                    names.push($(this).find('.nip05-name').val().trim());
+                    pubkeys.push($(this).find('.nip05-pubkey').val().trim());
+                });
+
+                $btn.prop('disabled', true);
+                $status.text('<?php esc_html_e('Saving...', 'nostr-for-wp'); ?>').css('color', '');
+
+                $.post(ajaxurl, {
+                    action:       'nostr_save_nip05',
+                    nonce:        nonce,
+                    nip05_names:  names,
+                    nip05_pubkeys: pubkeys,
+                }, function(response) {
+                    if (response.success) {
+                        $status.text(response.data.message).css('color', 'green');
+                        // Refresh after a moment so the preview updates
+                        setTimeout(function() { location.reload(); }, 1200);
+                    } else {
+                        $status.text(response.data).css('color', 'red');
+                    }
+                }).fail(function() {
+                    $status.text('<?php esc_html_e('Request failed. Please try again.', 'nostr-for-wp'); ?>').css('color', 'red');
+                }).always(function() {
+                    $btn.prop('disabled', false);
+                });
+            });
+        }(jQuery));
+        </script>
         
         <?php
     }
@@ -566,6 +744,99 @@ class Nostr_Admin_Settings {
         }
     }
     
+    /**
+     * Read current .well-known/nostr.json data
+     */
+    private static function get_nip05_data() {
+        $file = ABSPATH . '.well-known/nostr.json';
+        if (!file_exists($file)) {
+            return array('names' => array(), 'relays' => array());
+        }
+        $json = json_decode(file_get_contents($file), true);
+        if (!is_array($json)) {
+            return array('names' => array(), 'relays' => array());
+        }
+        return array(
+            'names'  => isset($json['names'])  && is_array($json['names'])  ? $json['names']  : array(),
+            'relays' => isset($json['relays']) && is_array($json['relays']) ? $json['relays'] : array(),
+        );
+    }
+
+    /**
+     * Save .well-known/nostr.json via AJAX
+     */
+    public function save_nip05_ajax() {
+        check_ajax_referer('nostr_for_wp_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_die('Insufficient permissions');
+        }
+
+        $dir  = ABSPATH . '.well-known';
+        $file = $dir . '/nostr.json';
+
+        // Ensure directory exists
+        if (!file_exists($dir)) {
+            if (!wp_mkdir_p($dir)) {
+                wp_send_json_error('Could not create .well-known directory. Check server permissions.');
+            }
+        }
+
+        if (file_exists($file) && !is_writable($file)) {
+            wp_send_json_error('nostr.json exists but is not writable. Check file permissions.');
+        }
+
+        if (!file_exists($file) && !is_writable($dir)) {
+            wp_send_json_error('.well-known directory is not writable. Check server permissions.');
+        }
+
+        // Build names map — validate each pubkey is a 64-char hex string
+        $names = array();
+        $raw_names  = isset($_POST['nip05_names'])  ? (array) $_POST['nip05_names']  : array();
+        $raw_pubkeys = isset($_POST['nip05_pubkeys']) ? (array) $_POST['nip05_pubkeys'] : array();
+
+        foreach ($raw_names as $i => $name) {
+            $name   = sanitize_text_field($name);
+            $pubkey = isset($raw_pubkeys[$i]) ? sanitize_text_field($raw_pubkeys[$i]) : '';
+
+            if ($name === '' || $pubkey === '') {
+                continue;
+            }
+            if (!preg_match('/^[0-9a-f]{64}$/i', $pubkey)) {
+                wp_send_json_error('Invalid public key for "' . esc_html($name) . '". Must be a 64-character hex string.');
+            }
+            $names[$name] = strtolower($pubkey);
+        }
+
+        // Build optional relays map from the site's configured relays
+        $relays = array();
+        $options = get_option('nostr_for_wp_options', array());
+        $site_relays = !empty($options['relays']) ? $options['relays'] : (!empty($options['default_relays']) ? $options['default_relays'] : array());
+
+        foreach (array_keys($names) as $pubkey) {
+            if (!empty($site_relays)) {
+                $relays[$pubkey] = array_values($site_relays);
+            }
+        }
+
+        $payload = array('names' => $names);
+        if (!empty($relays)) {
+            $payload['relays'] = $relays;
+        }
+
+        $written = file_put_contents($file, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        if ($written === false) {
+            wp_send_json_error('Failed to write nostr.json. Check server permissions.');
+        }
+
+        wp_send_json_success(array(
+            'message' => 'nostr.json saved successfully.',
+            'path'    => str_replace(ABSPATH, '/', $file),
+            'names'   => $names,
+        ));
+    }
+
     /**
      * Mark post as synced
      */

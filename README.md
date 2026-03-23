@@ -11,6 +11,7 @@ Two-way synchronization between WordPress content and Nostr protocol. Supports s
 - 🔐 NIP-07 browser extension integration for outbound notes
 - 🎨 Gutenberg block for displaying Nostr notes archive
 - ⚡ WebSocket relay configuration
+- 🪪 NIP-05 domain identity — generate `.well-known/nostr.json` from the admin
 
 ## Quick Start
 

@@ -4,7 +4,7 @@ Tags: nostr, social, sync, blockchain, decentralized
 Requires at least: 5.0
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,7 @@ Nostr for WordPress enables seamless two-way synchronization between your WordPr
 * **NIP-07 Integration**: Use your browser extension to sign events securely
 * **Custom Post Types**: Dedicated "Notes" post type for kind 1 events
 * **Long-Form Content**: Sync standard WordPress posts as kind 30023 events
+* **NIP-05 Identity**: Create and manage a `.well-known/nostr.json` file for domain-based identity verification
 * **Relay Management**: Configure multiple Nostr relays for redundancy
 * **Conflict Resolution**: Smart timestamp-based conflict resolution
 * **Opt-in Sync**: Choose which content to sync with Nostr
@@ -39,7 +40,6 @@ Nostr for WordPress enables seamless two-way synchronization between your WordPr
 * Follow Button to Grow Your Nostr Audience on Your Site
 * Zap support for bitcoin donations over Lightning
 * NIP-01 syncing Nostr Profile Data with WordPress profiles
-* NIP-05 Support for User and Domain Linking
 * Deeper integration with NIP 65 for relay management
 * NIP-51 Support for Link List Pages
 * Integrated Nostr Profile Statistics and Analytics
@@ -119,6 +119,12 @@ The plugin includes CSS styling that provides a clean, card-based design for not
 
 == Changelog ==
 
+= 1.3.0 =
+* Added NIP-05 identity support: create and manage `.well-known/nostr.json` directly from the settings page
+* NIP-05 admin UI includes dynamic name-to-pubkey mapping, writable status indicator, and a JSON file preview
+* "Use Connected Site Key" shortcut pre-fills the site's Nostr public key with `_` as the root domain identifier
+* Configured relays are automatically included in the `relays` field of `nostr.json`
+
 = 1.2.0 =
 * Added custom frontend display for notes with theme-agnostic styling
 * Implemented block templates for block themes (archive-note.html)
@@ -145,6 +151,9 @@ The plugin includes CSS styling that provides a clean, card-based design for not
 * Admin interface for settings and management
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+Adds NIP-05 domain identity support. Go to Settings > Nostr and use the new NIP-05 Identity section to generate your `.well-known/nostr.json` file.
 
 = 1.2.0 =
 This version adds frontend display customization, Gutenberg blocks, and shortcodes for displaying notes. Notes will now automatically use the new clean display format. No action required, but you can now use shortcodes and blocks to display notes anywhere on your site.

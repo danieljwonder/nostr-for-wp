@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Nostr for WP
  * Plugin URI: https://github.com/danieljwonder/nostr-for-wp
- * Description: Two-way synchronization between WordPress content and Nostr protocol. Supports kind 1 notes and kind 30023 long-form content with NIP-07 browser extension signing.
- * Version: 1.2.0
+ * Description: Two-way synchronization between WordPress content and Nostr protocol. Supports kind 1 notes and kind 30023 long-form content with NIP-07 browser extension signing and NIP-05 domain identity verification.
+ * Version: 1.3.0
  * Author: Daniel Wonder
  * License: GPL v2 or later
  * Text Domain: nostr-for-wp
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('NOSTR_FOR_WP_VERSION', '1.2.0');
+define('NOSTR_FOR_WP_VERSION', '1.3.0');
 define('NOSTR_FOR_WP_PLUGIN_FILE', __FILE__);
 define('NOSTR_FOR_WP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('NOSTR_FOR_WP_PLUGIN_URL', plugin_dir_url(__FILE__));
