@@ -189,7 +189,14 @@ class Nostr_Content_Mapper {
             'post_type' => 'note',
             'post_author' => $user_id,
             'post_date' => date('Y-m-d H:i:s', $event['created_at']),
-            'post_date_gmt' => gmdate('Y-m-d H:i:s', $event['created_at'])
+            'post_date_gmt' => gmdate('Y-m-d H:i:s', $event['created_at']),
+            // Loop guard: mark Nostr origin via meta_input so the meta
+            // exists BEFORE wp_insert_post() fires transition_post_status —
+            // the NIP-46 publisher checks it there. A separate
+            // update_post_meta() after insert would be too late.
+            'meta_input' => array(
+                '_nostr_origin' => true,
+            ),
         );
         
         nostr_for_wp_debug_log("Event {$event_id}: Post data - title length: " . strlen($title) . ", content length: " . strlen($content) . ", author: {$user_id}");
@@ -277,7 +284,14 @@ class Nostr_Content_Mapper {
             'post_type' => 'post', // Standard WordPress post
             'post_author' => $user_id,
             'post_date' => date('Y-m-d H:i:s', $event['created_at']),
-            'post_date_gmt' => gmdate('Y-m-d H:i:s', $event['created_at'])
+            'post_date_gmt' => gmdate('Y-m-d H:i:s', $event['created_at']),
+            // Loop guard: mark Nostr origin via meta_input so the meta
+            // exists BEFORE wp_insert_post() fires transition_post_status —
+            // the NIP-46 publisher checks it there. A separate
+            // update_post_meta() after insert would be too late.
+            'meta_input' => array(
+                '_nostr_origin' => true,
+            ),
         );
         
         $post_id = wp_insert_post($post_data);

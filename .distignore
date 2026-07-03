@@ -11,6 +11,10 @@ webpack.config.js
 .git/
 .gitignore
 .distignore
+tests/
+composer.json
+composer.lock
+docs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

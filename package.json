@@ -1,6 +1,6 @@
 {
   "name": "nostr-for-wp",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Two-way synchronization between WordPress content and Nostr protocol",
   "author": "Daniel Wonder",
   "license": "GPL-2.0-or-later",
@@ -23,6 +23,13 @@
     "build/",
     "includes/",
     "block-templates/",
+    "vendor/",
+    "!vendor/**/tests/**",
+    "!vendor/**/test/**",
+    "!vendor/**/benchmarks/**",
+    "!vendor/**/phpunit.xml.dist",
+    "!vendor/**/phpbench.json",
+    "!vendor/**/Makefile",
     "*.php",
     "readme.txt"
   ],

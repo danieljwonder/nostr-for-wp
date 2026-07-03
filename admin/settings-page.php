@@ -136,6 +136,11 @@ class Nostr_Admin_Settings {
                     </div>
                 </div>
                 
+                <?php
+                // Additional cards (e.g. the NIP-46 remote signer card)
+                do_action('nostr_for_wp_settings_cards');
+                ?>
+                
                 <!-- Relay Configuration -->
                 <div class="nostr-card">
                     <h2><?php _e('Relay Configuration', 'nostr-for-wp'); ?></h2>

@@ -4,11 +4,11 @@ Tags: nostr, social, sync, blockchain, decentralized
 Requires at least: 5.0
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Two-way synchronization between WordPress content and Nostr protocol. Supports kind 1 notes and kind 30023 long-form content with NIP-07 browser extension signing.
+Two-way synchronization between WordPress content and Nostr protocol. Supports kind 1 notes and kind 30023 long-form content with NIP-07 browser extension or NIP-46 remote signer (bunker) signing.
 
 == Description ==
 
@@ -18,6 +18,7 @@ Nostr for WordPress enables seamless two-way synchronization between your WordPr
 
 * **Two-Way Sync**: Automatically sync content between WordPress and Nostr
 * **NIP-07 Integration**: Use your browser extension to sign events securely
+* **NIP-46 Remote Signer (Bunker)**: Let the server sign outbound events via a remote signer you control — enables scheduled posts with no browser present, while your private key never touches the server
 * **Custom Post Types**: Dedicated "Notes" post type for kind 1 events
 * **Long-Form Content**: Sync standard WordPress posts as kind 30023 events
 * **NIP-05 Identity**: Create and manage a `.well-known/nostr.json` file for domain-based identity verification
@@ -49,8 +50,9 @@ Nostr for WordPress enables seamless two-way synchronization between your WordPr
 
 * WordPress 5.0 or higher
 * PHP 7.4 or higher
-* NIP-07 compatible browser extension (e.g., Alby, nos2x, etc.)
-* Nostr relay access
+* Nostr relay access (outbound wss:// / TCP 443 connectivity from the server)
+* For NIP-07 signing: a compatible browser extension (e.g., Alby, nos2x, etc.)
+* For NIP-46 remote signer (bunker) signing: the PHP sodium extension (bundled with PHP 7.2+, used to encrypt connection secrets at rest) and a NIP-46 signer you control (e.g. nak bunker, nsec.app, Amber)
 
 == Installation ==
 
@@ -61,6 +63,21 @@ Nostr for WordPress enables seamless two-way synchronization between your WordPr
 5. Connect your Nostr account in the settings page
 6. Configure your preferred relays
 7. Enable sync for individual posts and notes
+
+== Remote signer (NIP-46) ==
+
+By default, outbound events are signed by a NIP-07 browser extension, so someone with the extension must be present to publish. Selecting **Remote signer / bunker (NIP-46)** under Settings > Nostr lets the server sign outbound kind 1 and kind 30023 events by talking to a remote signer ("bunker") over Nostr relays. This enables scheduled posts and publishing without a browser, and your nsec never touches the WordPress server — the plugin only keeps its own client key for talking to the bunker.
+
+**Setup with nak bunker (example):**
+
+1. On a machine you control, run: `nak bunker --persist wss://relay.damus.io wss://nos.lol`
+2. Copy the printed `bunker://...` URI (it contains the signer pubkey, relays, and a one-time secret).
+3. In Settings > Nostr, select "Remote signer / bunker (NIP-46)", paste the URI, click Save, then "Connect and test". The panel shows the user pubkey (hex and npub) the bunker signs with.
+4. Publish or schedule posts normally — the server signs them via the bunker.
+
+All connections are outbound websockets: neither the bunker nor the WordPress host needs open inbound ports. The bunker URI (its secret authorises signing) and the plugin's client key are encrypted at rest using a key derived from your wp-config.php salts.
+
+**Locked or offline bunker:** publishing in WordPress never fails because of Nostr. If the bunker is unreachable or locked (e.g. `nak bunker --persist` requires a password unlock after a reboot), the Nostr publication is queued and retried via WP-Cron with backoff (5 min, 15 min, 60 min, then hourly for up to 24 hours). Queued/failed state is shown per post in the post list's "Nostr" column and in the "Nostr Remote Signer" box on the edit screen, with a manual "Retry now" action. Each post is published exactly once: the signed event is stored and reused on retry, never re-signed.
 
 == Usage ==
 
@@ -82,7 +99,7 @@ Nostr for WordPress enables seamless two-way synchronization between your WordPr
 
 = Do I need a Nostr account? =
 
-Yes, you need a Nostr account and a NIP-07 compatible browser extension to use this plugin. Popular extensions include Alby, nos2x, and others.
+Yes, you need a Nostr account. For signing you can use either a NIP-07 compatible browser extension (Alby, nos2x, ...) or a NIP-46 remote signer / bunker (nak bunker, nsec.app, Amber, ...).
 
 = What content gets synced? =
 
@@ -98,7 +115,11 @@ Yes, you can configure multiple Nostr relays for redundancy. The plugin will att
 
 = Is my private key stored on the server? =
 
-No, your private key is never stored on the server. All signing is done client-side through your browser extension using the NIP-07 standard.
+No, your private key is never stored on the server in either mode. With NIP-07, signing happens in your browser extension. With NIP-46, signing happens in the remote bunker you control; the server only stores its own client key and the bunker connection URI, both encrypted at rest.
+
+= Can scheduled posts publish to Nostr automatically? =
+
+Yes — with the NIP-46 remote signer configured, scheduled posts are signed and published to Nostr at their scheduled time via WP-Cron, with no browser session open. In NIP-07 mode this is not possible because the browser extension must sign.
 
 = What happens if a relay is down? =
 
@@ -118,6 +139,15 @@ The plugin includes CSS styling that provides a clean, card-based design for not
 2. Post editor with Nostr sync options
 
 == Changelog ==
+
+= 1.4.0 =
+* Added NIP-46 remote signer (bunker) support as a second signing method — the server can now sign outbound kind 1 and kind 30023 events via a bunker (nak bunker, nsec.app, Amber, ...)
+* Scheduled posts now publish to Nostr automatically in bunker mode, no browser required
+* Publish queue with WP-Cron retries and backoff (5/15/60 min, then hourly up to 24h) for when the bunker is offline or locked; per-post status column and "Retry now" action
+* NIP-44 payload encryption with NIP-04 fallback for older signers, detected automatically
+* Client key and bunker URI are encrypted at rest using a key derived from WordPress salts
+* New host requirements for bunker mode: PHP sodium extension and outbound wss:// connectivity (see Requirements)
+* The NIP-07 browser extension flow is unchanged and remains the default
 
 = 1.3.0 =
 * Added NIP-05 identity support: create and manage `.well-known/nostr.json` directly from the settings page
@@ -152,6 +182,9 @@ The plugin includes CSS styling that provides a clean, card-based design for not
 
 == Upgrade Notice ==
 
+= 1.4.0 =
+Adds NIP-46 remote signer (bunker) support for server-side signing and scheduled posts. Fully optional and off by default — existing NIP-07 setups are unaffected.
+
 = 1.3.0 =
 Adds NIP-05 domain identity support. Go to Settings > Nostr and use the new NIP-05 Identity section to generate your `.well-known/nostr.json` file.
 
@@ -172,6 +205,7 @@ Initial release of Nostr for WordPress. Install and configure your Nostr connect
 * **Sync Manager**: Orchestrates bidirectional synchronization
 * **Content Mapper**: Transforms content between WordPress and Nostr formats
 * **NIP-07 Handler**: Integrates with browser extensions for signing
+* **NIP-46 Client**: Server-side remote signer (bunker) client with queued publishing and retries
 * **Cron Handler**: Manages background polling for updates
 * **Frontend Display**: Customizes note display with theme-agnostic templates and styling
 * **Shortcode Handler**: Provides shortcodes for arbitrary note display
@@ -179,8 +213,9 @@ Initial release of Nostr for WordPress. Install and configure your Nostr connect
 
 **Security:**
 
-* No private keys stored server-side
-* All signing done client-side via NIP-07
+* Your Nostr private key is never stored server-side in either signing mode
+* NIP-07: all signing done client-side in the browser extension
+* NIP-46: signing done by the remote bunker; the plugin's client key and the bunker URI are encrypted at rest with a key derived from wp-config.php salts
 * Secure AJAX endpoints with nonce verification
 * User permission checks for all operations
 

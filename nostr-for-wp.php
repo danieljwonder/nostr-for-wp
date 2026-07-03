@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Nostr for WP
  * Plugin URI: https://github.com/danieljwonder/nostr-for-wp
- * Description: Two-way synchronization between WordPress content and Nostr protocol. Supports kind 1 notes and kind 30023 long-form content with NIP-07 browser extension signing and NIP-05 domain identity verification.
- * Version: 1.3.0
+ * Description: Two-way synchronization between WordPress content and Nostr protocol. Supports kind 1 notes and kind 30023 long-form content with NIP-07 browser extension or NIP-46 remote signer (bunker) signing, and NIP-05 domain identity verification.
+ * Version: 1.4.0
  * Author: Daniel Wonder
  * License: GPL v2 or later
  * Text Domain: nostr-for-wp
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('NOSTR_FOR_WP_VERSION', '1.3.0');
+define('NOSTR_FOR_WP_VERSION', '1.4.0');
 define('NOSTR_FOR_WP_PLUGIN_FILE', __FILE__);
 define('NOSTR_FOR_WP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('NOSTR_FOR_WP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -97,10 +97,18 @@ class Nostr_For_WP {
         require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-frontend-display.php';
         require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-note-shortcode.php';
         
+        // NIP-46 remote signer (bunker) support
+        require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-nip46-crypto.php';
+        require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-nip46-websocket.php';
+        require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-nip46-settings.php';
+        require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-nip46-client.php';
+        require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-nip46-publisher.php';
+        
         // Load admin classes
         if (is_admin()) {
             require_once NOSTR_FOR_WP_PLUGIN_DIR . 'admin/settings-page.php';
             require_once NOSTR_FOR_WP_PLUGIN_DIR . 'admin/meta-boxes.php';
+            require_once NOSTR_FOR_WP_PLUGIN_DIR . 'admin/nip46-settings.php';
         }
     }
     
@@ -121,6 +129,7 @@ class Nostr_For_WP {
         Nostr_Cron_Handler::get_instance();
         Nostr_Frontend_Display::get_instance();
         Nostr_Note_Shortcode::get_instance();
+        Nostr_NIP46_Publisher::get_instance();
         
         // Register blocks
         add_action('init', array($this, 'register_blocks'), 20);
@@ -128,6 +137,7 @@ class Nostr_For_WP {
         if (is_admin()) {
             Nostr_Admin_Settings::get_instance();
             Nostr_Admin_Meta_Boxes::get_instance();
+            Nostr_NIP46_Admin::get_instance();
         }
     }
     
@@ -364,6 +374,11 @@ class Nostr_For_WP {
         // Unschedule cron job using the cron handler
         $cron_handler = Nostr_Cron_Handler::get_instance();
         $cron_handler->unschedule_cron();
+        
+        // Clear any pending NIP-46 publish retries
+        if (function_exists('wp_unschedule_hook')) {
+            wp_unschedule_hook('nostr_nip46_process_post');
+        }
         
         // Flush rewrite rules
         flush_rewrite_rules();

@@ -2,6 +2,11 @@
 node_modules/
 vendor/
 
+# Local dev tooling artifacts (test scripts in tests/ are committed)
+tests/composer
+tests/bunker-out.txt
+tests/bunker-err.txt
+
 # Build output
 # IMPORTANT: Choose your strategy:
 # Option 1: Commit build/ for easy distribution (users don't need Node.js)

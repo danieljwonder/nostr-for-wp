@@ -1,0 +1,20 @@
+{
+    "name": "danieljwonder/nostr-for-wp",
+    "description": "Two-way synchronization between WordPress content and Nostr protocol.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=7.4",
+        "ext-json": "*",
+        "ext-openssl": "*",
+        "simplito/elliptic-php": "1.0.12"
+    },
+    "suggest": {
+        "ext-sodium": "Used to encrypt the NIP-46 client key and bunker URI at rest (bundled with PHP 7.2+)",
+        "ext-gmp": "Speeds up secp256k1 arithmetic used by the NIP-46 remote signer client (bcmath works as fallback)"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}
