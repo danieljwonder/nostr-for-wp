@@ -136,7 +136,7 @@ class Nostr_Frontend_Display {
                 $content = '<div class="nostr-note-content">' . $content . '</div>';
                 
                 // Add metadata after content on single pages
-                if (is_singular('note')) {
+                if (is_singular('note') && self::show_note_provenance()) {
                     $meta = '<div class="nostr-note-meta">';
                     $meta .= '<time datetime="' . esc_attr(get_the_date('c')) . '">';
                     $meta .= esc_html(get_the_date('l, F j, Y \a\t g:i'));
@@ -159,6 +159,14 @@ class Nostr_Frontend_Display {
         return $content;
     }
     
+    /**
+     * Whether to show timestamp and event ID beneath note content.
+     */
+    public static function show_note_provenance() {
+        $options = get_option('nostr_for_wp_options', array());
+        return !isset($options['show_note_provenance']) || !empty($options['show_note_provenance']);
+    }
+
     /**
      * Add custom class to note posts
      */

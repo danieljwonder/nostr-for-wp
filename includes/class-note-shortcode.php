@@ -105,14 +105,20 @@ class Nostr_Note_Shortcode {
         ob_start();
         ?>
         <article id="post-<?php echo esc_attr($note_id); ?>" class="nostr-note nostr-note-shortcode<?php echo $extra_class; ?>">
+            <?php
+            setup_postdata($note);
+            ?>
             <div class="nostr-note-content">
                 <?php echo apply_filters('the_content', $note->post_content); ?>
             </div>
+            <?php if (Nostr_Frontend_Display::show_note_provenance()) : ?>
             <div class="nostr-note-meta">
                 <time datetime="<?php echo esc_attr(get_the_date('c', $note_id)); ?>">
                     <?php echo esc_html(get_the_date('l, F j, Y \a\t g:i', $note_id)); ?>
                 </time>
             </div>
+            <?php endif; ?>
+            <?php wp_reset_postdata(); ?>
         </article>
         <?php
         return ob_get_clean();
@@ -158,11 +164,13 @@ class Nostr_Note_Shortcode {
                     <div class="nostr-note-content">
                         <?php the_content(); ?>
                     </div>
+                    <?php if (Nostr_Frontend_Display::show_note_provenance()) : ?>
                     <div class="nostr-note-meta">
                         <time datetime="<?php echo esc_attr(get_the_date('c')); ?>">
                             <?php echo esc_html(get_the_date('l, F j, Y \a\t g:i')); ?>
                         </time>
                     </div>
+                    <?php endif; ?>
                 </article>
                 <?php
             endwhile;

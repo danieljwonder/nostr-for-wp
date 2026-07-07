@@ -89,6 +89,11 @@ class Nostr_Admin_Settings {
             $options['auto_sync_enabled'] = true;
         }
         // Otherwise keep existing value
+
+        if (isset($_POST['nostr_for_wp_display_settings'])) {
+            $options['embed_inline_urls'] = !empty($_POST['nostr_for_wp_options']['embed_inline_urls']);
+            $options['show_note_provenance'] = !empty($_POST['nostr_for_wp_options']['show_note_provenance']);
+        }
         
         return $options;
     }
@@ -202,6 +207,42 @@ class Nostr_Admin_Settings {
                             </tr>
                         </table>
                         
+                        <?php submit_button(); ?>
+                    </form>
+                </div>
+
+                <!-- Display Settings -->
+                <div class="nostr-card">
+                    <h2><?php _e('Display Settings', 'nostr-for-wp'); ?></h2>
+                    <p class="description"><?php _e('Control how synced notes render on the public site.', 'nostr-for-wp'); ?></p>
+
+                    <form method="post" action="options.php">
+                        <?php settings_fields('nostr_for_wp_settings'); ?>
+                        <input type="hidden" name="nostr_for_wp_display_settings" value="1">
+
+                        <table class="form-table">
+                            <tr>
+                                <th scope="row"><?php _e('Inline URL embeds', 'nostr-for-wp'); ?></th>
+                                <td>
+                                    <label>
+                                        <input type="checkbox" name="nostr_for_wp_options[embed_inline_urls]" value="1" <?php checked(get_option('nostr_for_wp_options')['embed_inline_urls'] ?? true); ?>>
+                                        <?php _e('Append embed cards for inline URLs in notes (Twitter/X, YouTube, and other oEmbed providers)', 'nostr-for-wp'); ?>
+                                    </label>
+                                    <p class="description"><?php _e('Stored note content is never modified; embeds are added at render time only.', 'nostr-for-wp'); ?></p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><?php _e('Note provenance', 'nostr-for-wp'); ?></th>
+                                <td>
+                                    <label>
+                                        <input type="checkbox" name="nostr_for_wp_options[show_note_provenance]" value="1" <?php checked(get_option('nostr_for_wp_options')['show_note_provenance'] ?? true); ?>>
+                                        <?php _e('Show timestamp and Nostr event ID beneath note content on single note pages', 'nostr-for-wp'); ?>
+                                    </label>
+                                    <p class="description"><?php _e('Event metadata remains available via REST and post meta when disabled.', 'nostr-for-wp'); ?></p>
+                                </td>
+                            </tr>
+                        </table>
+
                         <?php submit_button(); ?>
                     </form>
                 </div>

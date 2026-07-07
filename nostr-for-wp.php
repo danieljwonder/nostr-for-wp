@@ -95,6 +95,7 @@ class Nostr_For_WP {
         require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-nip07-handler.php';
         require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-cron-handler.php';
         require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-frontend-display.php';
+        require_once NOSTR_FOR_WP_PLUGIN_DIR . 'public/class-note-embeds.php';
         require_once NOSTR_FOR_WP_PLUGIN_DIR . 'includes/class-note-shortcode.php';
         
         // NIP-46 remote signer (bunker) support
@@ -128,6 +129,7 @@ class Nostr_For_WP {
         Nostr_Content_Mapper::get_instance();
         Nostr_Cron_Handler::get_instance();
         Nostr_Frontend_Display::get_instance();
+        Nostr_Note_Embeds::get_instance();
         Nostr_Note_Shortcode::get_instance();
         Nostr_NIP46_Publisher::get_instance();
         
@@ -354,7 +356,9 @@ class Nostr_For_WP {
                 'wss://nos.lol'
             ),
             'sync_interval' => 300, // 5 minutes
-            'auto_sync_enabled' => true
+            'auto_sync_enabled' => true,
+            'embed_inline_urls' => true,
+            'show_note_provenance' => true,
         );
         
         add_option('nostr_for_wp_options', $default_options);

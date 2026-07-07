@@ -213,6 +213,22 @@ article.nostr-note-shortcode {
     margin-bottom: 0;
 }
 
+/* Inline URL embed cards appended at render time */
+.nfw-note-embed {
+    margin: 1.25rem 0 0;
+    padding: 0;
+    max-width: 100%;
+}
+
+.nfw-note-embed blockquote,
+.nfw-note-embed iframe {
+    max-width: 100%;
+}
+
+.nfw-note-embed iframe {
+    width: 100%;
+}
+
 /* Better spacing for note metadata in archives */
 .nostr-note-page:not(.single-note) .nostr-note .entry-meta,
 .nostr-note-page:not(.single-note) .nostr-note .post-meta {
